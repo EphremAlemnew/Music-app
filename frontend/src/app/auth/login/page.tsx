@@ -2,19 +2,29 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Music, Eye, EyeOff } from "lucide-react";
+import { Music, Eye, EyeOff, Loader2 } from "lucide-react";
+import { useLoginMutation } from "@/_services/query/auth-query/authQuery";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const loginMutation = useLoginMutation();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Login:", { email, password });
+    try {
+      await loginMutation.mutateAsync({ email, password });
+      router.push("/dashboard");
+    } catch (error) {
+      console.error("Login failed:", error);
+    }
   };
 
   return (
@@ -64,10 +74,23 @@ export default function LoginPage() {
 
             <Button
               type="submit"
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl shadow-md transition-all dark:bg-purple-500 dark:hover:bg-purple-600"
+              disabled={loginMutation.isPending}
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl shadow-md transition-all dark:bg-purple-500 dark:hover:bg-purple-600 disabled:opacity-50"
             >
-              Login
+              {loginMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Logging in...
+                </>
+              ) : (
+                "Login"
+              )}
             </Button>
+            {loginMutation.isError && (
+              <p className="text-red-500 text-sm mt-2 text-center">
+                Login failed. Please check your credentials.
+              </p>
+            )}
           </form>
 
           <p className="text-center text-sm mt-4 text-gray-700 dark:text-gray-300">
