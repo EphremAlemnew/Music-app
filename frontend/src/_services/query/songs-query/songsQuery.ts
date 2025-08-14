@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { getSongs, getSong, createSong, deleteSong } from '@/_services/actions/songs-actions/actions'
+import { getSongs, getSong, createSong, updateSong, deleteSong } from '@/_services/actions/songs-actions/actions'
 import type { CreateSongData } from '@/_services/actions/songs-actions/actions'
 
 export const useSongs = (params?: {
@@ -34,6 +34,21 @@ export const useCreateSongMutation = () => {
     },
     onError: () => {
       toast.error('Failed to upload song. Please try again.')
+    },
+  })
+}
+
+export const useUpdateSongMutation = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<CreateSongData> }) => updateSong(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['songs'] })
+      toast.success('Song updated successfully!')
+    },
+    onError: () => {
+      toast.error('Failed to update song. Please try again.')
     },
   })
 }

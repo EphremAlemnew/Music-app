@@ -19,6 +19,11 @@ class SongSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data['uploaded_by'] = self.context['request'].user
         return super().create(validated_data)
+    
+    def update(self, instance, validated_data):
+        # Don't allow changing the uploaded_by field
+        validated_data.pop('uploaded_by', None)
+        return super().update(instance, validated_data)
 
 class SongListSerializer(serializers.ModelSerializer):
     uploaded_by_name = serializers.CharField(source='uploaded_by.username', read_only=True)
@@ -27,6 +32,6 @@ class SongListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Song
         fields = [
-            'id', 'title', 'artist', 'genre', 'duration',
+            'id', 'title', 'artist', 'genre', 'description', 'duration',
             'uploaded_by_name', 'created_at', 'file_url'
         ]

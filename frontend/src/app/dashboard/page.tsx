@@ -1,6 +1,29 @@
-import { Music, Library, User, Play, TrendingUp, Clock, BarChart3, HardDrive, Wifi, Shield } from 'lucide-react'
+'use client'
+
+import { Music, Library, User, Play, TrendingUp, Clock, BarChart3, HardDrive, Wifi, Shield, Loader2 } from 'lucide-react'
+import { useDashboardStats } from '@/_services/query/dashboard-query/dashboardQuery'
+import { useSongs } from '@/_services/query/songs-query/songsQuery'
+import { usePlaylists } from '@/_services/query/playlists-query/playlistsQuery'
+import { usePlayLogs } from '@/_services/query/play-logs-query/playLogsQuery'
 
 export default function DashboardPage() {
+  const { data: dashboardStats, isLoading: statsLoading } = useDashboardStats()
+  const { data: songsData } = useSongs({ ordering: '-created_at' })
+  const { data: playlistsData } = usePlaylists({ ordering: '-updated_at' })
+  const { data: playLogsData } = usePlayLogs({ ordering: '-played_at' })
+  
+  const totalSongs = songsData?.count || 0
+  const totalPlaylists = playlistsData?.count || 0
+  const recentPlays = playLogsData?.results?.slice(0, 3) || []
+  const topPlaylists = playlistsData?.results?.slice(0, 2) || []
+  
+  if (statsLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    )
+  }
   return (
     <div className="space-y-8">
       {/* Stats Overview */}
@@ -9,7 +32,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-purple-100">Total Songs</p>
-              <p className="text-3xl font-bold">1,247</p>
+              <p className="text-3xl font-bold">{totalSongs.toLocaleString()}</p>
             </div>
             <Music className="w-8 h-8 text-purple-200" />
           </div>
@@ -18,7 +41,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-blue-100">Playlists</p>
-              <p className="text-3xl font-bold">23</p>
+              <p className="text-3xl font-bold">{totalPlaylists}</p>
             </div>
             <Library className="w-8 h-8 text-blue-200" />
           </div>
@@ -27,7 +50,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-green-100">Active Users</p>
-              <p className="text-3xl font-bold">156</p>
+              <p className="text-3xl font-bold">{dashboardStats?.total_users || 0}</p>
             </div>
             <User className="w-8 h-8 text-green-200" />
           </div>
@@ -36,7 +59,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-orange-100">Plays Today</p>
-              <p className="text-3xl font-bold">892</p>
+              <p className="text-3xl font-bold">{dashboardStats?.plays_today || 0}</p>
             </div>
             <Play className="w-8 h-8 text-orange-200" />
           </div>
@@ -54,14 +77,16 @@ export default function DashboardPage() {
           </div>
           <p className="text-muted-foreground mb-4">Your recent music activity</p>
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm">
-              <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-              <span>Sample Song - Artist Name</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-              <span>Rock Anthem - Rock Band</span>
-            </div>
+            {recentPlays.length > 0 ? (
+              recentPlays.map((play, index) => (
+                <div key={index} className="flex items-center gap-2 text-sm">
+                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                  <span>{play.song_title} - {play.song_artist}</span>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">No recent plays</p>
+            )}
           </div>
         </div>
 
@@ -74,14 +99,16 @@ export default function DashboardPage() {
           </div>
           <p className="text-muted-foreground mb-4">Most popular playlists</p>
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              <span>Top Hits 2024 (15 songs)</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              <span>Chill Vibes (8 songs)</span>
-            </div>
+            {topPlaylists.length > 0 ? (
+              topPlaylists.map((playlist) => (
+                <div key={playlist.id} className="flex items-center gap-2 text-sm">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <span>{playlist.name} ({playlist.song_count} songs)</span>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">No playlists yet</p>
+            )}
           </div>
         </div>
 
@@ -114,42 +141,38 @@ export default function DashboardPage() {
             Recent Activity
           </h3>
           <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
-                  <Play className="w-4 h-4 text-white" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm">Song played</p>
-                  <p className="text-xs text-muted-foreground">Jazz Blues by Jazz Master</p>
-                </div>
-              </div>
-              <span className="text-xs text-muted-foreground">2m ago</span>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                  <Library className="w-4 h-4 text-white" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm">Playlist created</p>
-                  <p className="text-xs text-muted-foreground">My Favorites</p>
-                </div>
-              </div>
-              <span className="text-xs text-muted-foreground">5m ago</span>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                  <User className="w-4 h-4 text-white" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm">New user joined</p>
-                  <p className="text-xs text-muted-foreground">Alice Johnson</p>
-                </div>
-              </div>
-              <span className="text-xs text-muted-foreground">12m ago</span>
-            </div>
+            {dashboardStats?.recent_activity?.length > 0 ? (
+              dashboardStats.recent_activity.map((activity, index) => {
+                const getActivityIcon = (type: string) => {
+                  switch (type) {
+                    case 'play': return { icon: Play, color: 'bg-purple-500' }
+                    case 'playlist': return { icon: Library, color: 'bg-blue-500' }
+                    case 'user': return { icon: User, color: 'bg-green-500' }
+                    default: return { icon: Play, color: 'bg-gray-500' }
+                  }
+                }
+                
+                const { icon: Icon, color } = getActivityIcon(activity.type)
+                const timeAgo = new Date(activity.timestamp).toLocaleString()
+                
+                return (
+                  <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 ${color} rounded-full flex items-center justify-center`}>
+                        <Icon className="w-4 h-4 text-white" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">{activity.title}</p>
+                        <p className="text-xs text-muted-foreground">{activity.description}</p>
+                      </div>
+                    </div>
+                    <span className="text-xs text-muted-foreground">{timeAgo}</span>
+                  </div>
+                )
+              })
+            ) : (
+              <p className="text-sm text-muted-foreground">No recent activity</p>
+            )}
           </div>
         </div>
 
@@ -159,42 +182,26 @@ export default function DashboardPage() {
             Music Analytics
           </h3>
           <div className="space-y-4">
-            <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span>Pop Music</span>
-                <span>45%</span>
-              </div>
-              <div className="w-full bg-muted rounded-full h-2">
-                <div className="bg-purple-500 h-2 rounded-full" style={{width: '45%'}}></div>
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span>Rock</span>
-                <span>30%</span>
-              </div>
-              <div className="w-full bg-muted rounded-full h-2">
-                <div className="bg-blue-500 h-2 rounded-full" style={{width: '30%'}}></div>
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span>Jazz</span>
-                <span>15%</span>
-              </div>
-              <div className="w-full bg-muted rounded-full h-2">
-                <div className="bg-green-500 h-2 rounded-full" style={{width: '15%'}}></div>
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span>Electronic</span>
-                <span>10%</span>
-              </div>
-              <div className="w-full bg-muted rounded-full h-2">
-                <div className="bg-orange-500 h-2 rounded-full" style={{width: '10%'}}></div>
-              </div>
-            </div>
+            {dashboardStats?.genre_stats?.length > 0 ? (
+              dashboardStats.genre_stats.slice(0, 4).map((genre, index) => {
+                const colors = ['bg-purple-500', 'bg-blue-500', 'bg-green-500', 'bg-orange-500']
+                const color = colors[index % colors.length]
+                
+                return (
+                  <div key={genre.genre}>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="capitalize">{genre.genre.replace('_', ' ')}</span>
+                      <span>{genre.percentage}%</span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div className={`${color} h-2 rounded-full`} style={{width: `${genre.percentage}%`}}></div>
+                    </div>
+                  </div>
+                )
+              })
+            ) : (
+              <p className="text-sm text-muted-foreground">No genre data available</p>
+            )}
           </div>
         </div>
       </div>

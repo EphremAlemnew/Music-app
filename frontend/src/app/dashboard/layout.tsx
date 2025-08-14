@@ -28,7 +28,7 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { NotificationDropdown } from "@/components/notifications/notification-dropdown";
+import { NotificationsDropdown } from "@/components/notifications-dropdown";
 import { FloatingPlayer } from "@/components/music-player/floating-player";
 import {
   DropdownMenu,
@@ -122,10 +122,10 @@ export default function DashboardLayout({
                   "Dashboard"}
             </h1>
           </div>
-          <NotificationDropdown />
+          <NotificationsDropdown />
         </header>
         <main className="flex-1 p-6">{children}</main>
-              {/* FloatingPlayer is now controlled from the songs page */}
+        {/* FloatingPlayer is now controlled from the songs page */}
       </SidebarInset>
     </SidebarProvider>
   );

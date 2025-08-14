@@ -50,6 +50,11 @@ export const createSong = async (data: CreateSongData): Promise<Song> => {
   return response.data;
 };
 
+export const updateSong = async (id: number, data: Partial<CreateSongData>): Promise<Song> => {
+  const response = await axiosInstance.patch(`songs/${id}/`, data)
+  return response.data
+}
+
 export const deleteSong = async (id: number): Promise<void> => {
   await axiosInstance.delete(`songs/${id}/`);
 };

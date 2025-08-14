@@ -1,120 +1,151 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { Plus, Play, Edit, Trash2, Music2, Users, Lock } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
+import { useState } from "react";
+import {
+  Plus,
+  Play,
+  Edit,
+  Trash2,
+  Music2,
+  Users,
+  Lock,
+  Loader2,
+  Check,
+} from "lucide-react";
+import {
+  usePlaylists,
+  useCreatePlaylistMutation,
+  useUpdatePlaylistMutation,
+  useDeletePlaylistMutation,
+} from "@/_services/query/playlists-query/playlistsQuery";
+import { useSongs } from "@/_services/query/songs-query/songsQuery";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 
 interface Song {
-  id: string
-  title: string
-  artist: string
+  id: string;
+  title: string;
+  artist: string;
 }
 
 interface Playlist {
-  id: string
-  name: string
-  createdBy: string
-  isPublic: boolean
-  songs: Song[]
+  id: string;
+  name: string;
+  createdBy: string;
+  isPublic: boolean;
+  songs: Song[];
 }
 
 export default function PlaylistsPage() {
-  const [playlists, setPlaylists] = useState<Playlist[]>([
-    {
-      id: '1',
-      name: 'Top Hits 2024',
-      createdBy: 'Admin',
-      isPublic: true,
-      songs: [
-        { id: '1', title: 'Sample Song 1', artist: 'Artist 1' },
-        { id: '2', title: 'Sample Song 2', artist: 'Artist 2' }
-      ]
-    },
-    {
-      id: '2',
-      name: 'My Favorites',
-      createdBy: 'John Doe',
-      isPublic: false,
-      songs: [{ id: '3', title: 'Favorite Song', artist: 'Favorite Artist' }]
+  const { data: playlistsData, isLoading } = usePlaylists({
+    ordering: "-updated_at",
+  });
+  const createPlaylistMutation = useCreatePlaylistMutation();
+  const updatePlaylistMutation = useUpdatePlaylistMutation();
+  const deletePlaylistMutation = useDeletePlaylistMutation();
+
+  const playlists = playlistsData?.results || [];
+
+  const [isAdmin] = useState(true);
+  const [currentUser] = useState("John Doe");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+  });
+  const [selectedSongs, setSelectedSongs] = useState<number[]>([]);
+
+  const { data: songsData } = useSongs();
+  const availableSongs = songsData?.results || [];
+  const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(
+    null
+  );
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      if (editingPlaylist) {
+        await updatePlaylistMutation.mutateAsync({
+          id: editingPlaylist.id,
+          data: {
+            name: formData.name,
+            description: formData.description,
+          },
+        });
+      } else {
+        await createPlaylistMutation.mutateAsync({
+          name: formData.name,
+          description: formData.description,
+          song_ids: selectedSongs,
+        });
+      }
+      setFormData({ name: "", description: "" });
+      setSelectedSongs([]);
+      setEditingPlaylist(null);
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to save playlist:", error);
     }
-  ])
+  };
 
-  const [availableSongs] = useState<Song[]>([
-    { id: '1', title: 'Sample Song 1', artist: 'Artist 1' },
-    { id: '2', title: 'Sample Song 2', artist: 'Artist 2' },
-    { id: '3', title: 'Favorite Song', artist: 'Favorite Artist' },
-    { id: '4', title: 'New Song', artist: 'New Artist' }
-  ])
+  const handleEdit = (playlist: any) => {
+    if (playlist.created_by_name !== currentUser && !isAdmin) return;
+    setEditingPlaylist(playlist);
+    setFormData({
+      name: playlist.name,
+      description: playlist.description || "",
+    });
+    setSelectedSongs(playlist.songs?.map((s) => s.id) || []);
+    setIsDialogOpen(true);
+  };
 
-  const [isAdmin] = useState(true)
-  const [currentUser] = useState('John Doe')
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null)
-  const [playlistName, setPlaylistName] = useState('')
-  const [selectedSongs, setSelectedSongs] = useState<string[]>([])
-  const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null)
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+  const handleDelete = (id: number) => {
+    deletePlaylistMutation.mutate(id);
+  };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    const newPlaylist: Playlist = {
-      id: editingPlaylist?.id || Date.now().toString(),
-      name: playlistName,
-      createdBy: editingPlaylist?.createdBy || currentUser,
-      isPublic: editingPlaylist?.isPublic || isAdmin,
-      songs: availableSongs.filter(song => selectedSongs.includes(song.id))
-    }
-
-    if (editingPlaylist) {
-      setPlaylists(playlists.map(p => p.id === editingPlaylist.id ? newPlaylist : p))
-    } else {
-      setPlaylists([...playlists, newPlaylist])
-    }
-
-    setPlaylistName('')
-    setSelectedSongs([])
-    setEditingPlaylist(null)
-    setIsDialogOpen(false)
-  }
-
-  const handleEdit = (playlist: Playlist) => {
-    if (playlist.createdBy !== currentUser && !isAdmin) return
-    setEditingPlaylist(playlist)
-    setPlaylistName(playlist.name)
-    setSelectedSongs(playlist.songs.map(s => s.id))
-    setIsDialogOpen(true)
-  }
-
-  const handleDelete = (id: string) => {
-    const playlist = playlists.find(p => p.id === id)
-    if (playlist && (playlist.createdBy === currentUser || isAdmin)) {
-      setPlaylists(playlists.filter(p => p.id !== id))
-    }
-  }
-
-  const toggleSongSelection = (songId: string) => {
-    setSelectedSongs(prev => 
-      prev.includes(songId) 
-        ? prev.filter(id => id !== songId)
+  const toggleSongSelection = (songId: number) => {
+    setSelectedSongs((prev) =>
+      prev.includes(songId)
+        ? prev.filter((id) => id !== songId)
         : [...prev, songId]
-    )
-  }
+    );
+  };
 
-  const canModify = (playlist: Playlist) => {
-    return playlist.createdBy === currentUser || isAdmin
+  const canModify = (playlist: any) => {
+    return playlist.created_by_name === currentUser || isAdmin;
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Playlists</h1>
-          <p className="text-muted-foreground mt-1">Discover and manage your music collections</p>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+            Playlists
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Discover and manage your music collections
+          </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -125,35 +156,104 @@ export default function PlaylistsPage() {
           </DialogTrigger>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>{editingPlaylist ? 'Edit Playlist' : 'Create New Playlist'}</DialogTitle>
+              <DialogTitle>
+                {editingPlaylist ? "Edit Playlist" : "Create New Playlist"}
+              </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <Label htmlFor="name">Playlist Name</Label>
                 <Input
                   id="name"
-                  value={playlistName}
-                  onChange={(e) => setPlaylistName(e.target.value)}
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
                   required
                 />
               </div>
               <div>
-                <Label>Select Songs</Label>
-                <div className="max-h-40 overflow-y-auto space-y-2 border rounded p-2">
-                  {availableSongs.map((song) => (
-                    <div key={song.id} className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        checked={selectedSongs.includes(song.id)}
-                        onChange={() => toggleSongSelection(song.id)}
-                      />
-                      <span className="text-sm">{song.title} - {song.artist}</span>
-                    </div>
-                  ))}
+                <Label htmlFor="description">Description</Label>
+                <Input
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
+                  placeholder="Optional description"
+                />
+              </div>
+              <div>
+                <Label className="text-base font-semibold mb-3 block">Select Songs</Label>
+                <div className="max-h-72 overflow-y-auto space-y-3">
+                  {availableSongs.map((song) => {
+                    const isSelected = selectedSongs.includes(song.id)
+                    return (
+                      <div
+                        key={song.id}
+                        onClick={() => toggleSongSelection(song.id)}
+                        className={`group relative p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 hover:shadow-md ${
+                          isSelected
+                            ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30 shadow-sm'
+                            : 'border-gray-200 dark:border-gray-700 hover:border-purple-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                            isSelected 
+                              ? 'bg-gradient-to-br from-purple-500 to-blue-600' 
+                              : 'bg-gradient-to-br from-gray-400 to-gray-500 group-hover:from-purple-400 group-hover:to-blue-500'
+                          }`}>
+                            <Music2 className="w-4 h-4 text-white" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{song.title}</p>
+                            <p className="text-xs text-muted-foreground truncate">{song.artist}</p>
+                          </div>
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200 ${
+                            isSelected
+                              ? 'bg-purple-500'
+                              : 'bg-gray-200 dark:bg-gray-700 group-hover:bg-purple-200 dark:group-hover:bg-purple-800'
+                          }`}>
+                            {isSelected ? (
+                              <Check className="w-4 h-4 text-white" />
+                            ) : (
+                              <div className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500 group-hover:bg-purple-400 transition-colors" />
+                            )}
+                          </div>
+                        </div>
+                        {isSelected && (
+                          <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-purple-500/10 to-blue-500/10 pointer-events-none" />
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+                <div className="mt-3 p-2 bg-muted/50 rounded-lg">
+                  <p className="text-sm font-medium text-center">
+                    {selectedSongs.length} of {availableSongs.length} songs selected
+                  </p>
                 </div>
               </div>
-              <Button type="submit" className="w-full">
-                {editingPlaylist ? 'Update Playlist' : 'Create Playlist'}
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={
+                  createPlaylistMutation.isPending ||
+                  updatePlaylistMutation.isPending
+                }
+              >
+                {createPlaylistMutation.isPending ||
+                updatePlaylistMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    {editingPlaylist ? "Updating..." : "Creating..."}
+                  </>
+                ) : editingPlaylist ? (
+                  "Update Playlist"
+                ) : (
+                  "Create Playlist"
+                )}
               </Button>
             </form>
           </DialogContent>
@@ -173,32 +273,60 @@ export default function PlaylistsPage() {
           {selectedPlaylist && (
             <div className="space-y-6">
               <div className="flex items-center gap-4">
-                <Badge className={selectedPlaylist.isPublic ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400"}>
-                  {selectedPlaylist.isPublic ? <Users className="w-3 h-3 mr-1" /> : <Lock className="w-3 h-3 mr-1" />}
-                  {selectedPlaylist.isPublic ? 'Public' : 'Private'}
+                <Badge
+                  className={
+                    selectedPlaylist.isPublic
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                      : "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400"
+                  }
+                >
+                  {selectedPlaylist.isPublic ? (
+                    <Users className="w-3 h-3 mr-1" />
+                  ) : (
+                    <Lock className="w-3 h-3 mr-1" />
+                  )}
+                  {selectedPlaylist.isPublic ? "Public" : "Private"}
                 </Badge>
-                <span className="text-muted-foreground">Created by {selectedPlaylist.createdBy}</span>
-                <span className="text-muted-foreground">{selectedPlaylist.songs.length} songs</span>
+                <span className="text-muted-foreground">
+                  Created by {selectedPlaylist.created_by_name}
+                </span>
+                <span className="text-muted-foreground">
+                  {selectedPlaylist.song_count} songs
+                </span>
               </div>
-              
+
               <div>
                 <h3 className="font-semibold mb-3">Songs in this playlist</h3>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {selectedPlaylist.songs.map((song, index) => (
-                    <div key={song.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50">
-                      <span className="w-6 text-sm text-muted-foreground">{index + 1}</span>
-                      <div className="flex-1">
-                        <p className="font-medium">{song.title}</p>
-                        <p className="text-sm text-muted-foreground">{song.artist}</p>
+                  {selectedPlaylist.songs &&
+                  selectedPlaylist.songs.length > 0 ? (
+                    selectedPlaylist.songs.map((song, index) => (
+                      <div
+                        key={song.id}
+                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50"
+                      >
+                        <span className="w-6 text-sm text-muted-foreground">
+                          {index + 1}
+                        </span>
+                        <div className="flex-1">
+                          <p className="font-medium">{song.title}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {song.artist}
+                          </p>
+                        </div>
+                        <Button size="sm" variant="ghost">
+                          <Play className="w-4 h-4" />
+                        </Button>
                       </div>
-                      <Button size="sm" variant="ghost">
-                        <Play className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <p className="text-muted-foreground">
+                      No songs in this playlist yet
+                    </p>
+                  )}
                 </div>
               </div>
-              
+
               <div className="flex gap-2">
                 <Button className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
                   <Play className="w-4 h-4 mr-2" />
@@ -206,17 +334,24 @@ export default function PlaylistsPage() {
                 </Button>
                 {canModify(selectedPlaylist) && (
                   <>
-                    <Button variant="outline" onClick={() => {
-                      handleEdit(selectedPlaylist)
-                      setIsDetailsOpen(false)
-                    }}>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        handleEdit(selectedPlaylist);
+                        setIsDetailsOpen(false);
+                      }}
+                    >
                       <Edit className="w-4 h-4 mr-2" />
                       Edit
                     </Button>
-                    <Button variant="outline" onClick={() => {
-                      handleDelete(selectedPlaylist.id)
-                      setIsDetailsOpen(false)
-                    }} className="hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        handleDelete(selectedPlaylist.id);
+                        setIsDetailsOpen(false);
+                      }}
+                      className="hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600"
+                    >
                       <Trash2 className="w-4 h-4 mr-2" />
                       Delete
                     </Button>
@@ -230,10 +365,14 @@ export default function PlaylistsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {playlists.map((playlist) => (
-          <Card key={playlist.id} className="group relative overflow-hidden bg-gradient-to-br from-card via-card to-muted/20 border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer" onClick={() => {
-            setSelectedPlaylist(playlist)
-            setIsDetailsOpen(true)
-          }}>
+          <Card
+            key={playlist.id}
+            className="group relative overflow-hidden bg-gradient-to-br from-card via-card to-muted/20 border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer"
+            onClick={() => {
+              setSelectedPlaylist(playlist);
+              setIsDetailsOpen(true);
+            }}
+          >
             <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             <CardHeader className="relative pb-2">
               <div className="flex justify-between items-start mb-2">
@@ -242,8 +381,12 @@ export default function PlaylistsPage() {
                     <Music2 className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <CardTitle className="text-xl font-bold group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">{playlist.name}</CardTitle>
-                    <p className="text-sm text-muted-foreground mt-1">by {playlist.createdBy}</p>
+                    <CardTitle className="text-xl font-bold group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                      {playlist.name}
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      by {playlist.created_by_name}
+                    </p>
                   </div>
                 </div>
                 {playlist.isPublic ? (
@@ -252,7 +395,10 @@ export default function PlaylistsPage() {
                     Public
                   </Badge>
                 ) : (
-                  <Badge variant="outline" className="border-orange-200 text-orange-700 dark:border-orange-800 dark:text-orange-400">
+                  <Badge
+                    variant="outline"
+                    className="border-orange-200 text-orange-700 dark:border-orange-800 dark:text-orange-400"
+                  >
                     <Lock className="w-3 h-3 mr-1" />
                     Private
                   </Badge>
@@ -264,42 +410,70 @@ export default function PlaylistsPage() {
                 <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
                   <Music2 className="w-4 h-4" />
                 </div>
-                <span className="font-medium">{playlist.songs.length} songs</span>
+                <span className="font-medium">{playlist.song_count} songs</span>
               </div>
-              
+
               <div className="space-y-2 mb-6 max-h-24 overflow-y-auto">
-                {playlist.songs.slice(0, 3).map((song) => (
-                  <div key={song.id} className="flex items-center gap-2 text-sm">
-                    <div className="w-2 h-2 rounded-full bg-purple-500" />
-                    <span className="font-medium truncate">{song.title}</span>
-                    <span className="text-muted-foreground">•</span>
-                    <span className="text-muted-foreground truncate">{song.artist}</span>
-                  </div>
-                ))}
-                {playlist.songs.length > 3 && (
-                  <div className="text-xs text-muted-foreground pl-4">
-                    +{playlist.songs.length - 3} more songs
-                  </div>
+                {playlist.songs && playlist.songs.length > 0 ? (
+                  <>
+                    {playlist.songs.slice(0, 3).map((song) => (
+                      <div
+                        key={song.id}
+                        className="flex items-center gap-2 text-sm"
+                      >
+                        <div className="w-2 h-2 rounded-full bg-purple-500" />
+                        <span className="font-medium truncate">
+                          {song.title}
+                        </span>
+                        <span className="text-muted-foreground">•</span>
+                        <span className="text-muted-foreground truncate">
+                          {song.artist}
+                        </span>
+                      </div>
+                    ))}
+                    {playlist.songs.length > 3 && (
+                      <div className="text-xs text-muted-foreground pl-4">
+                        +{playlist.songs.length - 3} more songs
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    {playlist.description || "No songs in this playlist yet"}
+                  </p>
                 )}
               </div>
 
               <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                <Button size="sm" className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white border-0 shadow-md">
+                <Button
+                  size="sm"
+                  className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white border-0 shadow-md"
+                >
                   <Play className="w-4 h-4 mr-2" />
                   Play
                 </Button>
                 {canModify(playlist) && (
                   <div className="flex gap-1">
-                    <Button size="sm" variant="outline" onClick={(e) => {
-                      e.stopPropagation()
-                      handleEdit(playlist)
-                    }} className="hover:bg-blue-50 dark:hover:bg-blue-950">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit(playlist);
+                      }}
+                      className="hover:bg-blue-50 dark:hover:bg-blue-950"
+                    >
                       <Edit className="w-4 h-4" />
                     </Button>
-                    <Button size="sm" variant="outline" onClick={(e) => {
-                      e.stopPropagation()
-                      handleDelete(playlist.id)
-                    }} className="hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600 dark:hover:text-red-400">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(playlist.id);
+                      }}
+                      className="hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600 dark:hover:text-red-400"
+                    >
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
@@ -310,5 +484,5 @@ export default function PlaylistsPage() {
         ))}
       </div>
     </div>
-  )
+  );
 }

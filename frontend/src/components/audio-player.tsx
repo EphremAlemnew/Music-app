@@ -3,16 +3,20 @@
 import { useState, useRef } from 'react'
 import { Play, Pause } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useLogSongPlayMutation } from '@/_services/query/play-logs-query/playLogsQuery'
 
 interface AudioPlayerProps {
   src: string
   title: string
   artist: string
+  songId: number
 }
 
-export function AudioPlayer({ src, title, artist }: AudioPlayerProps) {
+export function AudioPlayer({ src, title, artist, songId }: AudioPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false)
+  const [hasLogged, setHasLogged] = useState(false)
   const audioRef = useRef<HTMLAudioElement>(null)
+  const logPlayMutation = useLogSongPlayMutation()
 
   const togglePlay = () => {
     if (!audioRef.current) return
@@ -21,12 +25,18 @@ export function AudioPlayer({ src, title, artist }: AudioPlayerProps) {
       audioRef.current.pause()
     } else {
       audioRef.current.play()
+      // Log play when song starts (only once per session)
+      if (!hasLogged) {
+        logPlayMutation.mutate(songId)
+        setHasLogged(true)
+      }
     }
     setIsPlaying(!isPlaying)
   }
 
   const handleEnded = () => {
     setIsPlaying(false)
+    setHasLogged(false) // Reset for next play
   }
 
   return (

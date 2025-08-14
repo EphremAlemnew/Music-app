@@ -30,13 +30,27 @@ class PlaylistSerializer(serializers.ModelSerializer):
 class PlaylistListSerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(source='created_by.username', read_only=True)
     song_count = serializers.ReadOnlyField()
+    songs = serializers.SerializerMethodField()
     
     class Meta:
         model = Playlist
         fields = [
             'id', 'name', 'description', 'created_by_name',
-            'is_public', 'song_count', 'created_at', 'updated_at'
+            'is_public', 'song_count', 'songs', 'created_at', 'updated_at'
         ]
+    
+    def get_songs(self, obj):
+        from songs.serializers import SongListSerializer
+        playlist_songs = obj.playlistsong_set.all().order_by('order', 'added_at')
+        return [{
+            'id': ps.song.id,
+            'title': ps.song.title,
+            'artist': ps.song.artist,
+            'genre': ps.song.genre,
+            'duration': ps.song.duration,
+            'file_url': ps.song.file_url,
+            'order': ps.order
+        } for ps in playlist_songs]
 
 class AddSongToPlaylistSerializer(serializers.Serializer):
     song_id = serializers.IntegerField()

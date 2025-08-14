@@ -14,8 +14,10 @@ import {
 import {
   useSongs,
   useCreateSongMutation,
+  useUpdateSongMutation,
   useDeleteSongMutation,
 } from "@/_services/query/songs-query/songsQuery";
+import { useLogSongPlayMutation } from "@/_services/query/play-logs-query/playLogsQuery";
 import {
   FloatingPlayer,
   FloatingPlayerSong,
@@ -62,7 +64,9 @@ export default function SongsPage() {
     ordering: "-created_at",
   });
   const createSongMutation = useCreateSongMutation();
+  const updateSongMutation = useUpdateSongMutation();
   const deleteSongMutation = useDeleteSongMutation();
+  const logPlayMutation = useLogSongPlayMutation();
 
   const songs = songsData?.results || [];
   const [formData, setFormData] = useState({
@@ -75,16 +79,28 @@ export default function SongsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.audioFile) return;
+    if (!editingSong && !formData.audioFile) return;
 
     try {
-      await createSongMutation.mutateAsync({
-        title: formData.title,
-        artist: formData.artist,
-        genre: formData.genre,
-        description: formData.description,
-        audio_file: formData.audioFile,
-      });
+      if (editingSong) {
+        await updateSongMutation.mutateAsync({
+          id: editingSong.id,
+          data: {
+            title: formData.title,
+            artist: formData.artist,
+            genre: formData.genre,
+            description: formData.description,
+          }
+        });
+      } else {
+        await createSongMutation.mutateAsync({
+          title: formData.title,
+          artist: formData.artist,
+          genre: formData.genre,
+          description: formData.description,
+          audio_file: formData.audioFile,
+        });
+      }
       setFormData({
         title: "",
         artist: "",
@@ -95,11 +111,11 @@ export default function SongsPage() {
       setEditingSong(null);
       setIsDialogOpen(false);
     } catch (error) {
-      console.error("Failed to upload song:", error);
+      console.error("Failed to save song:", error);
     }
   };
 
-  const handleEdit = (song: Song) => {
+  const handleEdit = (song: any) => {
     setEditingSong(song);
     setFormData({
       title: song.title,
@@ -222,9 +238,9 @@ export default function SongsPage() {
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={createSongMutation.isPending}
+                  disabled={createSongMutation.isPending || updateSongMutation.isPending}
                 >
-                  {createSongMutation.isPending ? (
+                  {(createSongMutation.isPending || updateSongMutation.isPending) ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       Uploading...
@@ -312,6 +328,9 @@ export default function SongsPage() {
                   className="w-full mb-2"
                   variant="secondary"
                   onClick={() => {
+                    // Log the play
+                    logPlayMutation.mutate(song.id);
+                    
                     setPlayerSong({
                       id: song.id,
                       title: song.title,

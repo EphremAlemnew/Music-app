@@ -11,6 +11,7 @@ urlpatterns = [
     path('api/playlists/', include('playlists.urls')),
     path('api/play-logs/', include('play_logs.urls')),
     path('api/notifications/', include('notifications.urls')),
+    path('api/dashboard/', include('dashboard.urls')),
     
     # API Documentation
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
