@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Play, Pause, SkipBack, SkipForward, Volume2, X } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
@@ -32,6 +32,8 @@ export function FloatingPlayer({
   const [currentTime, setCurrentTime] = useState("0:00");
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState<string>("0:00");
+  const [volume, setVolume] = useState(1);
+  const [isMuted, setIsMuted] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -52,6 +54,7 @@ export function FloatingPlayer({
         audioRef.current.src = `${process.env.NEXT_PUBLIC_API_MEDIA_URL}${song.file_url}`;
         audioRef.current.load();
       }
+      audioRef.current.volume = volume;
       setIsPlaying(true);
       audioRef.current.play().catch(() => setIsPlaying(false));
     }
@@ -61,7 +64,7 @@ export function FloatingPlayer({
         audioRef.current.pause();
       }
     };
-  }, [song]);
+  }, [song, volume]);
 
   const handleTimeUpdate = () => {
     if (audioRef.current) {
@@ -97,6 +100,25 @@ export function FloatingPlayer({
     if (!isNaN(newTime) && isFinite(newTime)) {
       audioRef.current.currentTime = newTime;
       setCurrentTime(formatTime(newTime));
+    }
+  };
+
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVolume = parseFloat(e.target.value) / 100;
+    setVolume(newVolume);
+    if (audioRef.current) {
+      audioRef.current.volume = newVolume;
+    }
+    if (newVolume > 0) {
+      setIsMuted(false);
+    }
+  };
+
+  const toggleMute = () => {
+    if (audioRef.current) {
+      const newMuted = !isMuted;
+      setIsMuted(newMuted);
+      audioRef.current.muted = newMuted;
     }
   };
 
@@ -194,15 +216,44 @@ export function FloatingPlayer({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => {
-                if (audioRef.current) {
-                  audioRef.current.muted = !audioRef.current.muted;
-                }
-              }}
+              onClick={toggleMute}
               className="w-10 h-10 rounded-full hover:bg-blue-100 dark:hover:bg-blue-950 hover:text-blue-600 dark:hover:text-blue-400"
             >
-              <Volume2 className="w-5 h-5" />
+              {isMuted || volume === 0 ? (
+                <VolumeX className="w-5 h-5" />
+              ) : (
+                <Volume2 className="w-5 h-5" />
+              )}
             </Button>
+          </div>
+          
+          <div className="flex items-center gap-2 mt-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleMute}
+              className="w-8 h-8 rounded-full hover:bg-blue-100 dark:hover:bg-blue-950 hover:text-blue-600 dark:hover:text-blue-400"
+            >
+              {isMuted || volume === 0 ? (
+                <VolumeX className="w-4 h-4" />
+              ) : (
+                <Volume2 className="w-4 h-4" />
+              )}
+            </Button>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={volume * 100}
+              onChange={handleVolumeChange}
+              className="flex-1 h-2 rounded-lg appearance-none bg-muted/50 cursor-pointer"
+              style={{
+                background: `linear-gradient(to right, var(--primary) ${volume * 100}%, var(--muted) ${volume * 100}%)`,
+              }}
+            />
+            <span className="text-xs font-medium text-muted-foreground w-8 text-center">
+              {Math.round(volume * 100)}
+            </span>
           </div>
         </div>
       </div>

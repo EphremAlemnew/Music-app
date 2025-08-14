@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { User, Bell, Volume2, Palette, Save } from "lucide-react";
+import { User, Bell, Shield, Save, Loader2 } from "lucide-react";
+import { useAppSelector } from "@/store/hooks";
+import { updateProfile, changePassword } from "@/_services/actions/profile-actions/actions";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,17 +20,56 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function SettingsPage() {
+  const { user } = useAppSelector((state) => state.user);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isPasswordLoading, setIsPasswordLoading] = useState(false);
   const [settings, setSettings] = useState({
-    name: "John Doe",
-    email: "john.doe@example.com",
+    first_name: user?.first_name || "",
+    last_name: user?.last_name || "",
+    email: user?.email || "",
     notifications: true,
-    autoPlay: false,
-    volume: "75",
-    theme: "system",
+  });
+  const [passwordData, setPasswordData] = useState({
+    current_password: "",
+    new_password: "",
+    confirm_password: "",
   });
 
-  const handleSave = () => {
-    console.log("Settings saved:", settings);
+  const handleSave = async () => {
+    setIsLoading(true);
+    try {
+      await updateProfile({
+        first_name: settings.first_name,
+        last_name: settings.last_name
+      });
+      toast.success("Profile updated successfully!");
+    } catch (error) {
+      toast.error("Failed to update profile");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    if (passwordData.new_password !== passwordData.confirm_password) {
+      toast.error("New passwords do not match");
+      return;
+    }
+    
+    setIsPasswordLoading(true);
+    try {
+      await changePassword(passwordData);
+      toast.success("Password changed successfully!");
+      setPasswordData({
+        current_password: "",
+        new_password: "",
+        confirm_password: "",
+      });
+    } catch (error) {
+      toast.error("Failed to change password");
+    } finally {
+      setIsPasswordLoading(false);
+    }
   };
 
   return (
@@ -54,13 +96,9 @@ export default function SettingsPage() {
             <Bell className="w-4 h-4" />
             <span className="text-xs">Notifications</span>
           </TabsTrigger>
-          <TabsTrigger value="playback" className="flex items-center gap-2">
-            <Volume2 className="w-4 h-4" />
-            <span className="text-xs">Playback</span>
-          </TabsTrigger>
-          <TabsTrigger value="appearance" className="flex items-center gap-2">
-            <Palette className="w-4 h-4" />
-            <span className="text-xs">Appearance</span>
+          <TabsTrigger value="security" className="flex items-center gap-2">
+            <Shield className="w-4 h-4" />
+            <span className="text-xs">Security</span>
           </TabsTrigger>
         </TabsList>
 
@@ -72,26 +110,38 @@ export default function SettingsPage() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="name">Name</Label>
+                  <Label htmlFor="first_name">First Name</Label>
                   <Input
-                    id="name"
-                    value={settings.name}
+                    id="first_name"
+                    value={settings.first_name}
                     onChange={(e) =>
-                      setSettings({ ...settings, name: e.target.value })
+                      setSettings({ ...settings, first_name: e.target.value })
                     }
                   />
                 </div>
                 <div>
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="last_name">Last Name</Label>
                   <Input
-                    id="email"
-                    type="email"
-                    value={settings.email}
+                    id="last_name"
+                    value={settings.last_name}
                     onChange={(e) =>
-                      setSettings({ ...settings, email: e.target.value })
+                      setSettings({ ...settings, last_name: e.target.value })
                     }
                   />
                 </div>
+              </div>
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={settings.email}
+                  disabled
+                  className="bg-muted"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Email cannot be changed
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -121,73 +171,57 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="playback">
+        <TabsContent value="security">
           <Card>
             <CardHeader>
-              <CardTitle>Playback Settings</CardTitle>
+              <CardTitle>Change Password</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Auto-play</p>
-                  <p className="text-sm text-muted-foreground">
-                    Automatically play next song
-                  </p>
-                </div>
-                <Switch
-                  checked={settings.autoPlay}
-                  onCheckedChange={(checked) =>
-                    setSettings({ ...settings, autoPlay: checked })
+              <div>
+                <Label htmlFor="current_password">Current Password</Label>
+                <Input
+                  id="current_password"
+                  type="password"
+                  value={passwordData.current_password}
+                  onChange={(e) =>
+                    setPasswordData({ ...passwordData, current_password: e.target.value })
                   }
                 />
               </div>
               <div>
-                <Label htmlFor="volume">Default Volume</Label>
-                <Select
-                  value={settings.volume}
-                  onValueChange={(value) =>
-                    setSettings({ ...settings, volume: value })
+                <Label htmlFor="new_password">New Password</Label>
+                <Input
+                  id="new_password"
+                  type="password"
+                  value={passwordData.new_password}
+                  onChange={(e) =>
+                    setPasswordData({ ...passwordData, new_password: e.target.value })
                   }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="25">25%</SelectItem>
-                    <SelectItem value="50">50%</SelectItem>
-                    <SelectItem value="75">75%</SelectItem>
-                    <SelectItem value="100">100%</SelectItem>
-                  </SelectContent>
-                </Select>
+                />
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="appearance">
-          <Card>
-            <CardHeader>
-              <CardTitle>Appearance Settings</CardTitle>
-            </CardHeader>
-            <CardContent>
               <div>
-                <Label htmlFor="theme">Theme</Label>
-                <Select
-                  value={settings.theme}
-                  onValueChange={(value) =>
-                    setSettings({ ...settings, theme: value })
+                <Label htmlFor="confirm_password">Confirm New Password</Label>
+                <Input
+                  id="confirm_password"
+                  type="password"
+                  value={passwordData.confirm_password}
+                  onChange={(e) =>
+                    setPasswordData({ ...passwordData, confirm_password: e.target.value })
                   }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="light">Light</SelectItem>
-                    <SelectItem value="dark">Dark</SelectItem>
-                    <SelectItem value="system">System</SelectItem>
-                  </SelectContent>
-                </Select>
+                />
               </div>
+              <Button
+                onClick={handlePasswordChange}
+                disabled={isPasswordLoading || !passwordData.current_password || !passwordData.new_password || !passwordData.confirm_password}
+                className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800"
+              >
+                {isPasswordLoading ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Shield className="w-4 h-4 mr-2" />
+                )}
+                {isPasswordLoading ? "Changing..." : "Change Password"}
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -195,10 +229,15 @@ export default function SettingsPage() {
         <div className="flex justify-end">
           <Button
             onClick={handleSave}
+            disabled={isLoading}
             className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
           >
-            <Save className="w-4 h-4 mr-2" />
-            Save Changes
+            {isLoading ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4 mr-2" />
+            )}
+            {isLoading ? "Saving..." : "Save Changes"}
           </Button>
         </div>
       </Tabs>

@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationsDropdown } from "@/components/notifications-dropdown";
+import { useMusic } from "@/contexts/music-context";
 import { FloatingPlayer } from "@/components/music-player/floating-player";
 import {
   DropdownMenu,
@@ -37,6 +38,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useLogoutMutation } from "@/_services/query/auth-query/authQuery";
+import { useAppSelector, useAppDispatch } from "@/store/hooks";
+import { playSong, setPlayerVisible, nextSong, previousSong } from "@/store/slices/musicSlice";
 
 const menuItems = [
   { title: "Home", icon: Home, url: "/dashboard" },
@@ -57,6 +60,12 @@ export default function DashboardLayout({
   const { mutate: logout } = useLogoutMutation();
   const router = useRouter();
   const logoutMutation = useLogoutMutation();
+  const dispatch = useAppDispatch();
+  const { user } = useAppSelector((state) => state.user);
+  console.log(user);
+  const { currentSong, isPlayerVisible } = useAppSelector(
+    (state) => state.music
+  );
   return (
     <SidebarProvider>
       <Sidebar>
@@ -90,9 +99,11 @@ export default function DashboardLayout({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex-1 min-w-0 text-left hover:bg-accent rounded-md p-1">
-                  <p className="text-sm font-medium truncate">John Doe</p>
+                  <p className="text-sm font-medium truncate">
+                    {user?.username || "User"}
+                  </p>
                   <p className="text-xs text-muted-foreground truncate">
-                    john.doe@example.com
+                    {user?.email || "user@example.com"}
                   </p>
                 </button>
               </DropdownMenuTrigger>
@@ -125,7 +136,13 @@ export default function DashboardLayout({
           <NotificationsDropdown />
         </header>
         <main className="flex-1 p-6">{children}</main>
-        {/* FloatingPlayer is now controlled from the songs page */}
+        <FloatingPlayer
+          song={currentSong}
+          isVisible={isPlayerVisible}
+          onClose={() => dispatch(setPlayerVisible(false))}
+          onNext={() => dispatch(nextSong())}
+          onPrev={() => dispatch(previousSong())}
+        />
       </SidebarInset>
     </SidebarProvider>
   );

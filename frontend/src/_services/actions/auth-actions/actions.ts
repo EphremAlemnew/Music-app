@@ -1,4 +1,6 @@
 import axiosInstance from "../axiosInstance";
+import { store } from "@/store";
+import { setAuth, clearAuth, setToken } from "@/store/slices/userSlice";
 
 export interface LoginData {
   email: string;
@@ -22,6 +24,10 @@ export interface AuthResponse {
     id: number;
     username: string;
     email: string;
+    first_name: string;
+    last_name: string;
+    is_admin: boolean;
+    user_type: string;
   };
 }
 
@@ -29,9 +35,14 @@ export const login = async (data: LoginData): Promise<AuthResponse> => {
   const response = await axiosInstance.post("auth/login/", data);
   const { access, refresh, user } = response.data;
 
-  localStorage.setItem("token", access);
-  localStorage.setItem("refreshToken", refresh);
-  localStorage.setItem("user", JSON.stringify(user));
+  store.dispatch(setAuth({
+    user: {
+      ...user,
+      is_admin: user.user_type === 'admin' || user.is_admin
+    },
+    token: access,
+    refreshToken: refresh
+  }));
 
   return response.data;
 };
@@ -40,27 +51,37 @@ export const register = async (data: RegisterData): Promise<AuthResponse> => {
   const response = await axiosInstance.post("auth/register/", data);
   const { access, refresh, user } = response.data;
 
-  localStorage.setItem("token", access);
-  localStorage.setItem("refreshToken", refresh);
-  localStorage.setItem("user", JSON.stringify(user));
+  store.dispatch(setAuth({
+    user: {
+      ...user,
+      is_admin: user.user_type === 'admin' || user.is_admin
+    },
+    token: access,
+    refreshToken: refresh
+  }));
 
   return response.data;
 };
 
 export const logout = async (): Promise<void> => {
   try {
-    const refreshToken = localStorage.getItem("refreshToken");
-    await axiosInstance.post("auth/logout/", { refresh: refreshToken });
+    const state = store.getState();
+    const refreshToken = state.user.refreshToken;
+    if (refreshToken) {
+      await axiosInstance.post("auth/logout/", { refresh: refreshToken });
+    }
   } finally {
-    localStorage.removeItem("token");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("user");
+    store.dispatch(clearAuth());
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('userState');
+    }
     window.location.href = "/auth/login";
   }
 };
 
 export const refreshToken = async (): Promise<string> => {
-  const refresh = localStorage.getItem("refreshToken");
+  const state = store.getState();
+  const refresh = state.user.refreshToken;
   if (!refresh) throw new Error("No refresh token");
 
   const response = await axiosInstance.post("/api/token/refresh/", {
@@ -68,15 +89,21 @@ export const refreshToken = async (): Promise<string> => {
   });
   const { access } = response.data;
 
-  localStorage.setItem("token", access);
+  store.dispatch(setToken(access));
   return access;
 };
 
 export const getCurrentUser = () => {
-  const user = localStorage.getItem("user");
-  return user ? JSON.parse(user) : null;
+  const state = store.getState();
+  return state.user.user;
 };
 
 export const isAuthenticated = (): boolean => {
-  return !!localStorage.getItem("token");
+  const state = store.getState();
+  return state.user.isAuthenticated && !!state.user.token;
+};
+
+export const getToken = (): string | null => {
+  const state = store.getState();
+  return state.user.token;
 };

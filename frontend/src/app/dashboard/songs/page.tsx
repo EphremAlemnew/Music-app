@@ -18,6 +18,8 @@ import {
   useDeleteSongMutation,
 } from "@/_services/query/songs-query/songsQuery";
 import { useLogSongPlayMutation } from "@/_services/query/play-logs-query/playLogsQuery";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { playSong } from "@/store/slices/musicSlice";
 import {
   FloatingPlayer,
   FloatingPlayerSong,
@@ -63,12 +65,12 @@ interface Song {
 }
 // ...existing code...
 export default function SongsPage() {
-  const [isAdmin] = useState(true);
+  const { user } = useAppSelector((state) => state.user);
+  const isAdmin = user?.is_admin || false;
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSong, setEditingSong] = useState<Song | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [playerSong, setPlayerSong] = useState<FloatingPlayerSong | null>(null);
-  const [isPlayerVisible, setIsPlayerVisible] = useState(false);
+
   const [songToDelete, setSongToDelete] = useState<any>(null);
 
   const { data: songsData, isLoading } = useSongs({
@@ -79,6 +81,7 @@ export default function SongsPage() {
   const updateSongMutation = useUpdateSongMutation();
   const deleteSongMutation = useDeleteSongMutation();
   const logPlayMutation = useLogSongPlayMutation();
+  const dispatch = useAppDispatch();
 
   const songs = songsData?.results || [];
   const [formData, setFormData] = useState({
@@ -350,14 +353,13 @@ export default function SongsPage() {
                     // Log the play
                     logPlayMutation.mutate(song.id);
                     
-                    setPlayerSong({
+                    dispatch(playSong({
                       id: song.id,
                       title: song.title,
                       artist: song.artist,
                       duration: song.duration || "",
                       file_url: song.file_url,
-                    });
-                    setIsPlayerVisible(true);
+                    }));
                   }}
                 >
                   <Play className="w-4 h-4 mr-2" />
@@ -379,11 +381,7 @@ export default function SongsPage() {
         </div>
       )}
 
-      <FloatingPlayer
-        song={playerSong}
-        isVisible={isPlayerVisible}
-        onClose={() => setIsPlayerVisible(false)}
-      />
+
 
       <AlertDialog open={!!songToDelete} onOpenChange={() => setSongToDelete(null)}>
         <AlertDialogContent>

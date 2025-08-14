@@ -1,9 +1,14 @@
+"use client";
+
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { QueryProvider } from "@/components/providers";
 import { MusicProvider } from "@/contexts/music-context";
 import { Toaster } from "sonner";
+import { Provider } from 'react-redux';
+import { store } from '@/store';
+import { AuthInitializer } from '@/components/auth-initializer';
 import "./globals.css";
 
 const geistSans = Geist({
@@ -16,10 +21,10 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Music",
-  description: "Your music streaming app",
-};
+// export const metadata: Metadata = {
+//   title: "Music",
+//   description: "Your music streaming app",
+// };
 
 export default function RootLayout({
   children,
@@ -31,19 +36,22 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <QueryProvider>
-          <MusicProvider>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="system"
-              enableSystem
-              disableTransitionOnChange
-            >
-              {children}
-              <Toaster richColors position="bottom-right" />
-            </ThemeProvider>
-          </MusicProvider>
-        </QueryProvider>
+        <Provider store={store}>
+          <AuthInitializer />
+          <QueryProvider>
+            <MusicProvider>
+              <ThemeProvider
+                attribute="class"
+                defaultTheme="system"
+                enableSystem
+                disableTransitionOnChange
+              >
+                {children}
+                <Toaster richColors position="bottom-right" />
+              </ThemeProvider>
+            </MusicProvider>
+          </QueryProvider>
+        </Provider>
       </body>
     </html>
   );

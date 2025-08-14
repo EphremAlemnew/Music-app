@@ -13,8 +13,10 @@ interface Song {
 interface MusicContextType {
   currentSong: Song | null
   isPlaying: boolean
+  isPlayerVisible: boolean
   setCurrentSong: (song: Song) => void
   setIsPlaying: (playing: boolean) => void
+  setIsPlayerVisible: (visible: boolean) => void
   playSong: (song: Song) => void
 }
 
@@ -23,18 +25,22 @@ const MusicContext = createContext<MusicContextType | undefined>(undefined)
 export function MusicProvider({ children }: { children: ReactNode }) {
   const [currentSong, setCurrentSong] = useState<Song | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [isPlayerVisible, setIsPlayerVisible] = useState(false)
 
   const playSong = (song: Song) => {
     setCurrentSong(song)
     setIsPlaying(true)
+    setIsPlayerVisible(true)
   }
 
   return (
     <MusicContext.Provider value={{
       currentSong,
       isPlaying,
+      isPlayerVisible,
       setCurrentSong,
       setIsPlaying,
+      setIsPlayerVisible,
       playSong
     }}>
       {children}

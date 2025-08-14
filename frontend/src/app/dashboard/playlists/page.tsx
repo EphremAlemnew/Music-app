@@ -19,6 +19,10 @@ import {
   useDeletePlaylistMutation,
 } from "@/_services/query/playlists-query/playlistsQuery";
 import { useSongs } from "@/_services/query/songs-query/songsQuery";
+import { useAppSelector, useAppDispatch } from "@/store/hooks";
+import { playPlaylist, playSong } from "@/store/slices/musicSlice";
+import { useLogSongPlayMutation } from "@/_services/query/play-logs-query/playLogsQuery";
+import { addSongToPlaylist, removeSongFromPlaylist } from "@/_services/actions/playlists-actions/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +35,16 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Song {
   id: string;
@@ -56,8 +70,11 @@ export default function PlaylistsPage() {
 
   const playlists = playlistsData?.results || [];
 
-  const [isAdmin] = useState(true);
-  const [currentUser] = useState("John Doe");
+  const dispatch = useAppDispatch();
+  const { user } = useAppSelector((state) => state.user);
+  const isAdmin = user?.is_admin || false;
+  const currentUser = user?.username || "";
+  const logPlayMutation = useLogSongPlayMutation();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
   const [formData, setFormData] = useState({
@@ -72,12 +89,14 @@ export default function PlaylistsPage() {
     null
   );
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [playlistToDelete, setPlaylistToDelete] = useState<any>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
       if (editingPlaylist) {
+        // Update playlist metadata
         await updatePlaylistMutation.mutateAsync({
           id: editingPlaylist.id,
           data: {
@@ -85,6 +104,21 @@ export default function PlaylistsPage() {
             description: formData.description,
           },
         });
+        
+        // Update songs in playlist
+        const currentSongIds = editingPlaylist.songs?.map(s => s.id) || []
+        const songsToAdd = selectedSongs.filter(id => !currentSongIds.includes(id))
+        const songsToRemove = currentSongIds.filter(id => !selectedSongs.includes(id))
+        
+        // Add new songs sequentially
+        for (let i = 0; i < songsToAdd.length; i++) {
+          await addSongToPlaylist(editingPlaylist.id, songsToAdd[i])
+        }
+        
+        // Remove deselected songs sequentially
+        for (let i = 0; i < songsToRemove.length; i++) {
+          await removeSongFromPlaylist(editingPlaylist.id, songsToRemove[i])
+        }
       } else {
         await createPlaylistMutation.mutateAsync({
           name: formData.name,
@@ -102,7 +136,7 @@ export default function PlaylistsPage() {
   };
 
   const handleEdit = (playlist: any) => {
-    if (playlist.created_by_name !== currentUser && !isAdmin) return;
+    if (playlist.created_by_name !== currentUser) return;
     setEditingPlaylist(playlist);
     setFormData({
       name: playlist.name,
@@ -112,8 +146,15 @@ export default function PlaylistsPage() {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: number) => {
-    deletePlaylistMutation.mutate(id);
+  const handleDelete = (playlist: any) => {
+    setPlaylistToDelete(playlist);
+  };
+
+  const confirmDelete = () => {
+    if (playlistToDelete) {
+      deletePlaylistMutation.mutate(playlistToDelete.id);
+      setPlaylistToDelete(null);
+    }
   };
 
   const toggleSongSelection = (songId: number) => {
@@ -125,7 +166,38 @@ export default function PlaylistsPage() {
   };
 
   const canModify = (playlist: any) => {
-    return playlist.created_by_name === currentUser || isAdmin;
+    return playlist.created_by_name === currentUser;
+  };
+
+  const handlePlayPlaylist = (playlist: any) => {
+    if (playlist.songs && playlist.songs.length > 0) {
+      // Log the first song play
+      logPlayMutation.mutate(playlist.songs[0].id);
+      
+      // Convert playlist songs to the format expected by Redux
+      const playlistSongs = playlist.songs.map((song: any) => ({
+        id: song.id,
+        title: song.title,
+        artist: song.artist,
+        duration: song.duration || "",
+        file_url: song.file_url
+      }));
+      
+      dispatch(playPlaylist(playlistSongs));
+    }
+  };
+
+  const handlePlaySong = (song: any) => {
+    // Log the song play
+    logPlayMutation.mutate(song.id);
+    
+    dispatch(playSong({
+      id: song.id,
+      title: song.title,
+      artist: song.artist,
+      duration: song.duration || "",
+      file_url: song.file_url
+    }));
   };
 
   if (isLoading) {
@@ -149,7 +221,10 @@ export default function PlaylistsPage() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => setEditingPlaylist(null)}>
+            <Button 
+              onClick={() => setEditingPlaylist(null)}
+              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white border-0 shadow-md"
+            >
               <Plus className="w-4 h-4 mr-2" />
               Create Playlist
             </Button>
@@ -314,7 +389,11 @@ export default function PlaylistsPage() {
                             {song.artist}
                           </p>
                         </div>
-                        <Button size="sm" variant="ghost">
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => handlePlaySong(song)}
+                        >
                           <Play className="w-4 h-4" />
                         </Button>
                       </div>
@@ -328,7 +407,10 @@ export default function PlaylistsPage() {
               </div>
 
               <div className="flex gap-2">
-                <Button className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
+                <Button 
+                  className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                  onClick={() => handlePlayPlaylist(selectedPlaylist)}
+                >
                   <Play className="w-4 h-4 mr-2" />
                   Play All
                 </Button>
@@ -347,7 +429,7 @@ export default function PlaylistsPage() {
                     <Button
                       variant="outline"
                       onClick={() => {
-                        handleDelete(selectedPlaylist.id);
+                        handleDelete(selectedPlaylist);
                         setIsDetailsOpen(false);
                       }}
                       className="hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600"
@@ -448,6 +530,7 @@ export default function PlaylistsPage() {
                 <Button
                   size="sm"
                   className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white border-0 shadow-md"
+                  onClick={() => handlePlayPlaylist(playlist)}
                 >
                   <Play className="w-4 h-4 mr-2" />
                   Play
@@ -470,7 +553,7 @@ export default function PlaylistsPage() {
                       variant="outline"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDelete(playlist.id);
+                        handleDelete(playlist);
                       }}
                       className="hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600 dark:hover:text-red-400"
                     >
@@ -483,6 +566,24 @@ export default function PlaylistsPage() {
           </Card>
         ))}
       </div>
+
+      <AlertDialog open={!!playlistToDelete} onOpenChange={() => setPlaylistToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Playlist</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{playlistToDelete?.name}"? 
+              This action cannot be undone and will permanently remove the playlist and all its songs.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

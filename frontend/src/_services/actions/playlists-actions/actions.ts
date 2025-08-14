@@ -50,8 +50,8 @@ export const createPlaylist = async (
   
   // Add songs to playlist if provided
   if (song_ids && song_ids.length > 0) {
-    for (const songId of song_ids) {
-      await addSongToPlaylist(response.data.id, songId);
+    for (let i = 0; i < song_ids.length; i++) {
+      await addSongToPlaylist(response.data.id, song_ids[i]);
     }
   }
   
