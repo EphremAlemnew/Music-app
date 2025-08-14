@@ -1,54 +1,54 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { Clock, User, Music, Calendar, Loader2 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import { usePlayLogs } from '@/_services/query/play-logs-query/playLogsQuery'
+import { useState } from "react";
+import { Clock, User, Music, Calendar, Loader2 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { usePlayLogs } from "@/_services/query/play-logs-query/playLogsQuery";
 
 export default function PlayLogsPage() {
-  const [isAdmin] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
-  
+  const [isAdmin] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+
   const { data: playLogsData, isLoading } = usePlayLogs({
-    ordering: '-played_at'
-  })
-  
-  const playLogs = playLogsData?.results || []
+    ordering: "-played_at",
+  });
 
+  const playLogs = playLogsData?.results || [];
 
-
-  const filteredLogs = playLogs.filter(log => {
-    return log.song_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-           log.song_artist.toLowerCase().includes(searchTerm.toLowerCase()) ||
-           log.user_name.toLowerCase().includes(searchTerm.toLowerCase())
-  })
+  const filteredLogs = playLogs.filter((log) => {
+    return (
+      log.song_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.song_artist.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.user_name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
 
   const formatTimestamp = (timestamp: string) => {
-    return new Date(timestamp).toLocaleString()
-  }
+    return new Date(timestamp).toLocaleString();
+  };
 
   const getTimeAgo = (timestamp: string) => {
-    const now = new Date()
-    const playTime = new Date(timestamp)
-    const diffMs = now.getTime() - playTime.getTime()
-    const diffMins = Math.floor(diffMs / (1000 * 60))
-    const diffHours = Math.floor(diffMins / 60)
-    const diffDays = Math.floor(diffHours / 24)
+    const now = new Date();
+    const playTime = new Date(timestamp);
+    const diffMs = now.getTime() - playTime.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
 
-    if (diffMins < 1) return 'Just now'
-    if (diffMins < 60) return `${diffMins}m ago`
-    if (diffHours < 24) return `${diffHours}h ago`
-    return `${diffDays}d ago`
-  }
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return `${diffDays}d ago`;
+  };
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-8 h-8 animate-spin" />
       </div>
-    )
+    );
   }
 
   return (
@@ -57,12 +57,12 @@ export default function PlayLogsPage() {
         <div>
           <h1 className="text-2xl font-bold">Play Logs</h1>
           <p className="text-muted-foreground">
-            {isAdmin ? 'All user play history' : 'Your play history'}
+            {isAdmin ? "All user play history" : "Your play history"}
           </p>
         </div>
-        <Badge variant={isAdmin ? 'default' : 'secondary'}>
+        {/* <Badge variant={isAdmin ? 'default' : 'secondary'}>
           {isAdmin ? 'Admin View' : 'User View'}
-        </Badge>
+        </Badge> */}
       </div>
 
       <div className="flex gap-4 items-center">
@@ -76,8 +76,6 @@ export default function PlayLogsPage() {
           {filteredLogs.length} logs found
         </div>
       </div>
-
-
 
       <div className="space-y-4">
         {filteredLogs.length === 0 ? (
@@ -98,11 +96,15 @@ export default function PlayLogsPage() {
                     </div>
                     <div>
                       <h3 className="font-medium">{log.song_title}</h3>
-                      <p className="text-sm text-muted-foreground">{log.song_artist}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {log.song_artist}
+                      </p>
                       {isAdmin && (
                         <div className="flex items-center gap-1 mt-1">
                           <User className="w-3 h-3" />
-                          <span className="text-xs text-muted-foreground">{log.user_name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {log.user_name}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -124,5 +126,5 @@ export default function PlayLogsPage() {
         )}
       </div>
     </div>
-  )
+  );
 }

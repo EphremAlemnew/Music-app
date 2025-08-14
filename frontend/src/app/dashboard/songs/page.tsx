@@ -32,6 +32,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -58,6 +69,7 @@ export default function SongsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [playerSong, setPlayerSong] = useState<FloatingPlayerSong | null>(null);
   const [isPlayerVisible, setIsPlayerVisible] = useState(false);
+  const [songToDelete, setSongToDelete] = useState<any>(null);
 
   const { data: songsData, isLoading } = useSongs({
     search: searchTerm || undefined,
@@ -127,8 +139,15 @@ export default function SongsPage() {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: number) => {
-    deleteSongMutation.mutate(id);
+  const handleDelete = (song: any) => {
+    setSongToDelete(song);
+  };
+
+  const confirmDelete = () => {
+    if (songToDelete) {
+      deleteSongMutation.mutate(songToDelete.id);
+      setSongToDelete(null);
+    }
   };
 
   if (isLoading) {
@@ -298,7 +317,7 @@ export default function SongsPage() {
                         size="sm"
                         variant="ghost"
                         className="opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => handleDelete(song.id)}
+                        onClick={() => handleDelete(song)}
                         disabled={deleteSongMutation.isPending}
                       >
                         <Trash2 className="w-4 h-4" />
@@ -365,6 +384,24 @@ export default function SongsPage() {
         isVisible={isPlayerVisible}
         onClose={() => setIsPlayerVisible(false)}
       />
+
+      <AlertDialog open={!!songToDelete} onOpenChange={() => setSongToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Song</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{songToDelete?.title}" by {songToDelete?.artist}? 
+              This action cannot be undone and will permanently remove the song and its audio file.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

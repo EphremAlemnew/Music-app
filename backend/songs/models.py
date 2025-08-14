@@ -55,6 +55,12 @@ class Song(models.Model):
             self.file_size = self.audio_file.size
         super().save(*args, **kwargs)
     
+    def delete(self, *args, **kwargs):
+        # Delete the audio file from storage
+        if self.audio_file:
+            self.audio_file.delete(save=False)
+        super().delete(*args, **kwargs)
+    
     @property
     def file_url(self):
         if self.audio_file:
