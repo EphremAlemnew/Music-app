@@ -14,17 +14,16 @@ def send_playlist_update_notification(playlist_id, message):
         # If it's a public playlist (admin created), notify all users
         if playlist.is_public:
             users = User.objects.filter(user_type='regular')
-            notifications = []
-            for user in users:
-                notifications.append(
-                    Notification(
-                        user=user,
-                        title='Playlist Updated',
-                        message=message,
-                        notification_type='playlist_update',
-                        related_playlist=playlist
-                    )
+            notifications = [
+                Notification(
+                    user=user,
+                    title='Playlist Updated',
+                    message=message,
+                    notification_type='playlist_update',
+                    related_playlist=playlist
                 )
+                for user in users
+            ]
             
             Notification.objects.bulk_create(notifications)
             return f"Notification sent to {len(notifications)} users about playlist update"
@@ -52,18 +51,16 @@ def send_new_song_notification(song_id):
         # Only notify if song was uploaded by admin
         if song.uploaded_by.is_admin:
             users = User.objects.filter(user_type='regular')
-            notifications = []
-            
-            for user in users:
-                notifications.append(
-                    Notification(
-                        user=user,
-                        title='New Song Available',
-                        message=f"New song '{song.title}' by {song.artist} has been added to the library!",
-                        notification_type='new_song',
-                        related_song=song
-                    )
+            notifications = [
+                Notification(
+                    user=user,
+                    title='New Song Available',
+                    message=f"New song '{song.title}' by {song.artist} has been added to the library!",
+                    notification_type='new_song',
+                    related_song=song
                 )
+                for user in users
+            ]
             
             Notification.objects.bulk_create(notifications)
             return f"New song notification sent to {len(notifications)} users"
@@ -79,7 +76,8 @@ def create_welcome_notification(user_id):
     try:
         user = User.objects.get(id=user_id)
         
-        message = f"Welcome to Music Management App, {user.first_name or user.username}! "
+        from django.utils.html import escape
+        message = escape(f"Welcome to Music Management App, {user.first_name or user.username}! ")
         if user.is_admin:
             message += "As an admin, you can upload songs, create public playlists, and view all play logs."
         else:

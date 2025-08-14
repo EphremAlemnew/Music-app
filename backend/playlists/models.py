@@ -27,7 +27,8 @@ class Playlist(models.Model):
         ]
     
     def __str__(self):
-        return f"{self.name} by {self.created_by.username}"
+        from django.utils.html import escape
+        return escape(f"{self.name} by {self.created_by.username}")
     
     @property
     def song_count(self):
@@ -50,4 +51,5 @@ class PlaylistSong(models.Model):
         unique_together = ['playlist', 'song']
     
     def __str__(self):
-        return f"{self.song.title} in {self.playlist.name}"
+        from django.utils.html import escape
+        return escape(f"{self.song.title} in {self.playlist.name}")

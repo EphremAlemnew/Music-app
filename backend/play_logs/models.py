@@ -25,7 +25,8 @@ class PlayLog(models.Model):
         ]
     
     def __str__(self):
-        return f"{self.user.username} played {self.song.title} at {self.played_at}"
+        from django.utils.html import escape
+        return escape(f"{self.user.username} played {self.song.title} at {self.played_at}")
     
     @classmethod
     def log_play(cls, user, song, request=None):

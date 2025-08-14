@@ -77,9 +77,8 @@ class PlaylistViewSet(viewsets.ModelViewSet):
         """Get all songs in the playlist"""
         playlist = self.get_object()
         playlist_songs = PlaylistSong.objects.filter(playlist=playlist).select_related('song')
-        songs_data = []
-        for ps in playlist_songs:
-            songs_data.append({
+        songs_data = [
+            {
                 'id': ps.song.id,
                 'title': ps.song.title,
                 'artist': ps.song.artist,
@@ -87,5 +86,7 @@ class PlaylistViewSet(viewsets.ModelViewSet):
                 'duration': ps.song.duration,
                 'order': ps.order,
                 'added_at': ps.added_at
-            })
+            }
+            for ps in playlist_songs
+        ]
         return Response(songs_data)

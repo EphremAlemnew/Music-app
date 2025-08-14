@@ -22,7 +22,10 @@ import { useSongs } from "@/_services/query/songs-query/songsQuery";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { playPlaylist, playSong } from "@/store/slices/musicSlice";
 import { useLogSongPlayMutation } from "@/_services/query/play-logs-query/playLogsQuery";
-import { addSongToPlaylist, removeSongFromPlaylist } from "@/_services/actions/playlists-actions/actions";
+import {
+  addSongToPlaylist,
+  removeSongFromPlaylist,
+} from "@/_services/actions/playlists-actions/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,17 +50,21 @@ import {
 } from "@/components/ui/alert-dialog";
 
 interface Song {
-  id: string;
+  id: number;
   title: string;
   artist: string;
+  duration?: string;
+  file_url?: string;
 }
 
 interface Playlist {
-  id: string;
+  id: number;
   name: string;
-  createdBy: string;
-  isPublic: boolean;
-  songs: Song[];
+  description?: string;
+  created_by_name: string;
+  is_public: boolean;
+  song_count: number;
+  songs?: Song[];
 }
 
 export default function PlaylistsPage() {
@@ -76,7 +83,7 @@ export default function PlaylistsPage() {
   const currentUser = user?.username || "";
   const logPlayMutation = useLogSongPlayMutation();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
+  const [editingPlaylist, setEditingPlaylist] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -85,9 +92,7 @@ export default function PlaylistsPage() {
 
   const { data: songsData } = useSongs();
   const availableSongs = songsData?.results || [];
-  const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(
-    null
-  );
+  const [selectedPlaylist, setSelectedPlaylist] = useState<any>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [playlistToDelete, setPlaylistToDelete] = useState<any>(null);
 
@@ -104,20 +109,25 @@ export default function PlaylistsPage() {
             description: formData.description,
           },
         });
-        
+
         // Update songs in playlist
-        const currentSongIds = editingPlaylist.songs?.map(s => s.id) || []
-        const songsToAdd = selectedSongs.filter(id => !currentSongIds.includes(id))
-        const songsToRemove = currentSongIds.filter(id => !selectedSongs.includes(id))
-        
+        const currentSongIds =
+          editingPlaylist.songs?.map((s: any) => s.id) || [];
+        const songsToAdd = selectedSongs.filter(
+          (id) => !currentSongIds.includes(id)
+        );
+        const songsToRemove = currentSongIds.filter(
+          (id: number) => !selectedSongs.includes(id)
+        );
+
         // Add new songs sequentially
         for (let i = 0; i < songsToAdd.length; i++) {
-          await addSongToPlaylist(editingPlaylist.id, songsToAdd[i])
+          await addSongToPlaylist(editingPlaylist.id, songsToAdd[i]);
         }
-        
+
         // Remove deselected songs sequentially
         for (let i = 0; i < songsToRemove.length; i++) {
-          await removeSongFromPlaylist(editingPlaylist.id, songsToRemove[i])
+          await removeSongFromPlaylist(editingPlaylist.id, songsToRemove[i]);
         }
       } else {
         await createPlaylistMutation.mutateAsync({
@@ -142,7 +152,7 @@ export default function PlaylistsPage() {
       name: playlist.name,
       description: playlist.description || "",
     });
-    setSelectedSongs(playlist.songs?.map((s) => s.id) || []);
+    setSelectedSongs(playlist.songs?.map((s: any) => s.id) || []);
     setIsDialogOpen(true);
   };
 
@@ -173,16 +183,16 @@ export default function PlaylistsPage() {
     if (playlist.songs && playlist.songs.length > 0) {
       // Log the first song play
       logPlayMutation.mutate(playlist.songs[0].id);
-      
+
       // Convert playlist songs to the format expected by Redux
       const playlistSongs = playlist.songs.map((song: any) => ({
         id: song.id,
         title: song.title,
         artist: song.artist,
         duration: song.duration || "",
-        file_url: song.file_url
+        file_url: song.file_url,
       }));
-      
+
       dispatch(playPlaylist(playlistSongs));
     }
   };
@@ -190,14 +200,16 @@ export default function PlaylistsPage() {
   const handlePlaySong = (song: any) => {
     // Log the song play
     logPlayMutation.mutate(song.id);
-    
-    dispatch(playSong({
-      id: song.id,
-      title: song.title,
-      artist: song.artist,
-      duration: song.duration || "",
-      file_url: song.file_url
-    }));
+
+    dispatch(
+      playSong({
+        id: song.id,
+        title: song.title,
+        artist: song.artist,
+        duration: song.duration || "",
+        file_url: song.file_url,
+      })
+    );
   };
 
   if (isLoading) {
@@ -221,7 +233,7 @@ export default function PlaylistsPage() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button 
+            <Button
               onClick={() => setEditingPlaylist(null)}
               className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white border-0 shadow-md"
             >
@@ -259,37 +271,47 @@ export default function PlaylistsPage() {
                 />
               </div>
               <div>
-                <Label className="text-base font-semibold mb-3 block">Select Songs</Label>
+                <Label className="text-base font-semibold mb-3 block">
+                  Select Songs
+                </Label>
                 <div className="max-h-72 overflow-y-auto space-y-3">
                   {availableSongs.map((song) => {
-                    const isSelected = selectedSongs.includes(song.id)
+                    const isSelected = selectedSongs.includes(song.id);
                     return (
                       <div
                         key={song.id}
                         onClick={() => toggleSongSelection(song.id)}
                         className={`group relative p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 hover:shadow-md ${
                           isSelected
-                            ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30 shadow-sm'
-                            : 'border-gray-200 dark:border-gray-700 hover:border-purple-300'
+                            ? "border-purple-500 bg-purple-50 dark:bg-purple-950/30 shadow-sm"
+                            : "border-gray-200 dark:border-gray-700 hover:border-purple-300"
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${
-                            isSelected 
-                              ? 'bg-gradient-to-br from-purple-500 to-blue-600' 
-                              : 'bg-gradient-to-br from-gray-400 to-gray-500 group-hover:from-purple-400 group-hover:to-blue-500'
-                          }`}>
+                          <div
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                              isSelected
+                                ? "bg-gradient-to-br from-purple-500 to-blue-600"
+                                : "bg-gradient-to-br from-gray-400 to-gray-500 group-hover:from-purple-400 group-hover:to-blue-500"
+                            }`}
+                          >
                             <Music2 className="w-4 h-4 text-white" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{song.title}</p>
-                            <p className="text-xs text-muted-foreground truncate">{song.artist}</p>
+                            <p className="font-medium text-sm truncate">
+                              {song.title}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {song.artist}
+                            </p>
                           </div>
-                          <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200 ${
-                            isSelected
-                              ? 'bg-purple-500'
-                              : 'bg-gray-200 dark:bg-gray-700 group-hover:bg-purple-200 dark:group-hover:bg-purple-800'
-                          }`}>
+                          <div
+                            className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200 ${
+                              isSelected
+                                ? "bg-purple-500"
+                                : "bg-gray-200 dark:bg-gray-700 group-hover:bg-purple-200 dark:group-hover:bg-purple-800"
+                            }`}
+                          >
                             {isSelected ? (
                               <Check className="w-4 h-4 text-white" />
                             ) : (
@@ -301,12 +323,13 @@ export default function PlaylistsPage() {
                           <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-purple-500/10 to-blue-500/10 pointer-events-none" />
                         )}
                       </div>
-                    )
+                    );
                   })}
                 </div>
                 <div className="mt-3 p-2 bg-muted/50 rounded-lg">
                   <p className="text-sm font-medium text-center">
-                    {selectedSongs.length} of {availableSongs.length} songs selected
+                    {selectedSongs.length} of {availableSongs.length} songs
+                    selected
                   </p>
                 </div>
               </div>
@@ -375,7 +398,7 @@ export default function PlaylistsPage() {
                 <div className="space-y-2 max-h-64 overflow-y-auto">
                   {selectedPlaylist.songs &&
                   selectedPlaylist.songs.length > 0 ? (
-                    selectedPlaylist.songs.map((song, index) => (
+                    selectedPlaylist.songs.map((song: any, index: any) => (
                       <div
                         key={song.id}
                         className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50"
@@ -389,8 +412,8 @@ export default function PlaylistsPage() {
                             {song.artist}
                           </p>
                         </div>
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           variant="ghost"
                           onClick={() => handlePlaySong(song)}
                         >
@@ -407,7 +430,7 @@ export default function PlaylistsPage() {
               </div>
 
               <div className="flex gap-2">
-                <Button 
+                <Button
                   className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
                   onClick={() => handlePlayPlaylist(selectedPlaylist)}
                 >
@@ -471,20 +494,6 @@ export default function PlaylistsPage() {
                     </p>
                   </div>
                 </div>
-                {playlist.isPublic ? (
-                  <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800">
-                    <Users className="w-3 h-3 mr-1" />
-                    Public
-                  </Badge>
-                ) : (
-                  <Badge
-                    variant="outline"
-                    className="border-orange-200 text-orange-700 dark:border-orange-800 dark:text-orange-400"
-                  >
-                    <Lock className="w-3 h-3 mr-1" />
-                    Private
-                  </Badge>
-                )}
               </div>
             </CardHeader>
             <CardContent className="relative pt-0">
@@ -567,18 +576,25 @@ export default function PlaylistsPage() {
         ))}
       </div>
 
-      <AlertDialog open={!!playlistToDelete} onOpenChange={() => setPlaylistToDelete(null)}>
+      <AlertDialog
+        open={!!playlistToDelete}
+        onOpenChange={() => setPlaylistToDelete(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Playlist</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{playlistToDelete?.name}"? 
-              This action cannot be undone and will permanently remove the playlist and all its songs.
+              Are you sure you want to delete "{playlistToDelete?.name}"? This
+              action cannot be undone and will permanently remove the playlist
+              and all its songs.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

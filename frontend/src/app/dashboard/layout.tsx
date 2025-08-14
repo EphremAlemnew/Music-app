@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   Music,
   Home,
@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationsDropdown } from "@/components/notifications-dropdown";
-import { useMusic } from "@/contexts/music-context";
+
 import { FloatingPlayer } from "@/components/music-player/floating-player";
 import {
   DropdownMenu,
@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useLogoutMutation } from "@/_services/query/auth-query/authQuery";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
-import { playSong, setPlayerVisible, nextSong, previousSong } from "@/store/slices/musicSlice";
+import { setPlayerVisible, nextSong, previousSong } from "@/store/slices/musicSlice";
 
 const menuItems = [
   { title: "Home", icon: Home, url: "/dashboard" },
@@ -57,12 +57,9 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { mutate: logout } = useLogoutMutation();
-  const router = useRouter();
   const logoutMutation = useLogoutMutation();
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.user);
-  console.log(user);
   const { currentSong, isPlayerVisible } = useAppSelector(
     (state) => state.music
   );

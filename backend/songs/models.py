@@ -48,7 +48,8 @@ class Song(models.Model):
         ]
     
     def __str__(self):
-        return f"{self.title} by {self.artist}"
+        from django.utils.html import escape
+        return escape(f"{self.title} by {self.artist}")
     
     def save(self, *args, **kwargs):
         if self.audio_file:

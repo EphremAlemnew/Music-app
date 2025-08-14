@@ -1,14 +1,14 @@
 "use client";
 
-import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { QueryProvider } from "@/components/providers";
 import { MusicProvider } from "@/contexts/music-context";
 import { Toaster } from "sonner";
-import { Provider } from 'react-redux';
-import { store } from '@/store';
-import { AuthInitializer } from '@/components/auth-initializer';
+import { Provider } from "react-redux";
+import { store } from "@/store";
+import { AuthInitializer } from "@/components/auth-initializer";
+import Head from "next/head";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -21,11 +21,6 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// export const metadata: Metadata = {
-//   title: "Music",
-//   description: "Your music streaming app",
-// };
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -33,6 +28,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <title>Music App</title>
+        <meta name="description" content="Your music streaming platform" />
+        <link rel="apple-touch-icon" href="/musical.png" />
+      </head>
+
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

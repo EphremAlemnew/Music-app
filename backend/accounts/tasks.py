@@ -1,6 +1,7 @@
 from celery import shared_task
 from django.core.mail import EmailMultiAlternatives
 from django.conf import settings
+from django.utils.html import escape
 from .models import User
 
 @shared_task
@@ -37,7 +38,7 @@ Music Management Team
                     <h1 style="margin: 0;">🎵 Welcome to Music Management App!</h1>
                 </div>
                 <div style="padding: 20px; color: #333;">
-                    <p style="font-size: 16px;">Hi <strong>{user.first_name or user.username}</strong>,</p>
+                    <p style="font-size: 16px;">Hi <strong>{escape(user.first_name or user.username)}</strong>,</p>
                     <p style="font-size: 16px;">Welcome to our <strong>Music Management App</strong>! We’re thrilled to have you on board. 🎶</p>
                     
                     <p style="font-size: 16px;">

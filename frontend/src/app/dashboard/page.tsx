@@ -170,7 +170,7 @@ export default function DashboardPage() {
             Recent Activity
           </h3>
           <div className="space-y-3">
-            {dashboardStats?.recent_activity?.length > 0 ? (
+            {dashboardStats?.recent_activity && dashboardStats.recent_activity.length > 0 ? (
               dashboardStats.recent_activity.map((activity, index) => {
                 const getActivityIcon = (type: string) => {
                   switch (type) {
@@ -226,7 +226,7 @@ export default function DashboardPage() {
             Music Analytics
           </h3>
           <div className="space-y-4">
-            {dashboardStats?.genre_stats?.length > 0 ? (
+            {dashboardStats?.genre_stats && dashboardStats.genre_stats.length > 0 ? (
               dashboardStats.genre_stats.slice(0, 4).map((genre, index) => {
                 const colors = [
                   "bg-purple-500",

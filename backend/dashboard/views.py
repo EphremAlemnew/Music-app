@@ -54,37 +54,39 @@ def dashboard_stats(request):
     ).order_by('-count')
     
     total_songs_for_percentage = Song.objects.count()
-    genre_stats_data = []
-    
-    if total_songs_for_percentage > 0:
-        for stat in genre_stats:
-            percentage = (stat['count'] / total_songs_for_percentage) * 100
-            genre_stats_data.append({
-                'genre': stat['genre'],
-                'percentage': round(percentage, 1)
-            })
+    genre_stats_data = [
+        {
+            'genre': stat['genre'],
+            'percentage': round((stat['count'] / total_songs_for_percentage) * 100, 1)
+        }
+        for stat in genre_stats
+    ] if total_songs_for_percentage > 0 else []
     
     # Recent activity (mix of plays, playlist creations, user joins)
     recent_activity = []
     
     # Add recent plays
-    for play in recent_plays[:3]:
-        recent_activity.append({
+    recent_activity.extend([
+        {
             'type': 'play',
             'title': 'Song played',
             'description': f'{play.song.title} by {play.song.artist}',
             'timestamp': play.played_at.isoformat()
-        })
+        }
+        for play in recent_plays[:3]
+    ])
     
     # Add recent playlists
     recent_playlists = Playlist.objects.order_by('-created_at')[:2]
-    for playlist in recent_playlists:
-        recent_activity.append({
+    recent_activity.extend([
+        {
             'type': 'playlist',
             'title': 'Playlist created',
             'description': playlist.name,
             'timestamp': playlist.created_at.isoformat()
-        })
+        }
+        for playlist in recent_playlists
+    ])
     
     # Add recent users
     recent_users = User.objects.order_by('-date_joined')[:1]

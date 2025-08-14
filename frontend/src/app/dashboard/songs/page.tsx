@@ -56,7 +56,7 @@ import {
 } from "@/components/ui/select";
 
 interface Song {
-  id: string;
+  id: number;
   title: string;
   artist: string;
   genre: string;
@@ -99,7 +99,7 @@ export default function SongsPage() {
     try {
       if (editingSong) {
         await updateSongMutation.mutateAsync({
-          id: editingSong.id,
+          id: Number(editingSong.id),
           data: {
             title: formData.title,
             artist: formData.artist,
@@ -107,7 +107,7 @@ export default function SongsPage() {
             description: formData.description,
           }
         });
-      } else {
+      } else if (formData.audioFile) {
         await createSongMutation.mutateAsync({
           title: formData.title,
           artist: formData.artist,

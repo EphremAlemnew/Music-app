@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 export interface FloatingPlayerSong {
-  id: string;
+  id: number;
   title: string;
   artist: string;
   duration?: string;
-  file_url: string;
+  file_url?: string;
 }
 
 interface FloatingPlayerProps {
@@ -47,7 +47,7 @@ export function FloatingPlayer({
   useEffect(() => {
     if (song && audioRef.current) {
       // Only update src if it has changed to prevent resetting
-      if (
+      if (song.file_url && 
         audioRef.current.src !==
         `${process.env.NEXT_PUBLIC_API_MEDIA_URL}${song.file_url}`
       ) {
