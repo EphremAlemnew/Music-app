@@ -1,84 +1,127 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { Plus, Play, Edit, Trash2, Upload, Search, Music } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+import { useState } from "react";
+import {
+  Plus,
+  Play,
+  Edit,
+  Trash2,
+  Upload,
+  Search,
+  Music,
+  Loader2,
+} from "lucide-react";
+import {
+  useSongs,
+  useCreateSongMutation,
+  useDeleteSongMutation,
+} from "@/_services/query/songs-query/songsQuery";
+import {
+  FloatingPlayer,
+  FloatingPlayerSong,
+} from "@/components/music-player/floating-player";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Song {
-  id: string
-  title: string
-  artist: string
-  genre: string
-  description?: string
-  audioFile?: File
+  id: string;
+  title: string;
+  artist: string;
+  genre: string;
+  description?: string;
+  audioFile?: File;
 }
-
+// ...existing code...
 export default function SongsPage() {
-  const [songs, setSongs] = useState<Song[]>([
-    { id: '1', title: 'Sample Song', artist: 'Sample Artist', genre: 'Pop' },
-    { id: '2', title: 'Rock Anthem', artist: 'Rock Band', genre: 'Rock' },
-    { id: '3', title: 'Jazz Blues', artist: 'Jazz Master', genre: 'Jazz' }
-  ])
-  const [isAdmin] = useState(true) // Mock admin status
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingSong, setEditingSong] = useState<Song | null>(null)
-  const [searchTerm, setSearchTerm] = useState('')
+  const [isAdmin] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingSong, setEditingSong] = useState<Song | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [playerSong, setPlayerSong] = useState<FloatingPlayerSong | null>(null);
+  const [isPlayerVisible, setIsPlayerVisible] = useState(false);
+
+  const { data: songsData, isLoading } = useSongs({
+    search: searchTerm || undefined,
+    ordering: "-created_at",
+  });
+  const createSongMutation = useCreateSongMutation();
+  const deleteSongMutation = useDeleteSongMutation();
+
+  const songs = songsData?.results || [];
   const [formData, setFormData] = useState({
-    title: '',
-    artist: '',
-    genre: '',
-    description: '',
-    audioFile: null as File | null
-  })
+    title: "",
+    artist: "",
+    genre: "",
+    description: "",
+    audioFile: null as File | null,
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    const newSong: Song = {
-      id: editingSong?.id || Date.now().toString(),
-      title: formData.title,
-      artist: formData.artist,
-      genre: formData.genre,
-      description: formData.description,
-      audioFile: formData.audioFile || undefined
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.audioFile) return;
+
+    try {
+      await createSongMutation.mutateAsync({
+        title: formData.title,
+        artist: formData.artist,
+        genre: formData.genre,
+        description: formData.description,
+        audio_file: formData.audioFile,
+      });
+      setFormData({
+        title: "",
+        artist: "",
+        genre: "",
+        description: "",
+        audioFile: null,
+      });
+      setEditingSong(null);
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to upload song:", error);
     }
-
-    if (editingSong) {
-      setSongs(songs.map(s => s.id === editingSong.id ? newSong : s))
-    } else {
-      setSongs([...songs, newSong])
-    }
-
-    setFormData({ title: '', artist: '', genre: '', description: '', audioFile: null })
-    setEditingSong(null)
-    setIsDialogOpen(false)
-  }
+  };
 
   const handleEdit = (song: Song) => {
-    setEditingSong(song)
+    setEditingSong(song);
     setFormData({
       title: song.title,
       artist: song.artist,
       genre: song.genre,
-      description: song.description || '',
-      audioFile: null
-    })
-    setIsDialogOpen(true)
-  }
+      description: song.description || "",
+      audioFile: null,
+    });
+    setIsDialogOpen(true);
+  };
 
-  const handleDelete = (id: string) => {
-    setSongs(songs.filter(s => s.id !== id))
-  }
+  const handleDelete = (id: number) => {
+    deleteSongMutation.mutate(id);
+  };
 
-  const filteredSongs = songs.filter(song => 
-    song.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    song.artist.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    song.genre.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -94,7 +137,9 @@ export default function SongsPage() {
             </DialogTrigger>
             <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>{editingSong ? 'Edit Song' : 'Add New Song'}</DialogTitle>
+                <DialogTitle>
+                  {editingSong ? "Edit Song" : "Add New Song"}
+                </DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
@@ -102,7 +147,9 @@ export default function SongsPage() {
                   <Input
                     id="title"
                     value={formData.title}
-                    onChange={(e) => setFormData({...formData, title: e.target.value})}
+                    onChange={(e) =>
+                      setFormData({ ...formData, title: e.target.value })
+                    }
                     required
                   />
                 </div>
@@ -111,25 +158,47 @@ export default function SongsPage() {
                   <Input
                     id="artist"
                     value={formData.artist}
-                    onChange={(e) => setFormData({...formData, artist: e.target.value})}
+                    onChange={(e) =>
+                      setFormData({ ...formData, artist: e.target.value })
+                    }
                     required
                   />
                 </div>
                 <div>
                   <Label htmlFor="genre">Genre</Label>
-                  <Input
-                    id="genre"
+                  <Select
                     value={formData.genre}
-                    onChange={(e) => setFormData({...formData, genre: e.target.value})}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, genre: value })
+                    }
                     required
-                  />
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a genre" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="rock">Rock</SelectItem>
+                      <SelectItem value="pop">Pop</SelectItem>
+                      <SelectItem value="jazz">Jazz</SelectItem>
+                      <SelectItem value="classical">Classical</SelectItem>
+                      <SelectItem value="electronic">Electronic</SelectItem>
+                      <SelectItem value="hip_hop">Hip Hop</SelectItem>
+                      <SelectItem value="country">Country</SelectItem>
+                      <SelectItem value="blues">Blues</SelectItem>
+                      <SelectItem value="reggae">Reggae</SelectItem>
+                      <SelectItem value="folk">Folk</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label htmlFor="description">Description</Label>
                   <Textarea
                     id="description"
                     value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                    onChange={(e) =>
+                      setFormData({ ...formData, description: e.target.value })
+                    }
                   />
                 </div>
                 <div>
@@ -137,12 +206,34 @@ export default function SongsPage() {
                   <Input
                     id="audio"
                     type="file"
-                    accept="audio/*"
-                    onChange={(e) => setFormData({...formData, audioFile: e.target.files?.[0] || null})}
+                    accept=".mp3,.wav,.m4a,.ogg"
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        audioFile: e.target.files?.[0] || null,
+                      })
+                    }
+                    required={!editingSong}
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Supported formats: MP3, WAV, M4A, OGG
+                  </p>
                 </div>
-                <Button type="submit" className="w-full">
-                  {editingSong ? 'Update Song' : 'Add Song'}
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={createSongMutation.isPending}
+                >
+                  {createSongMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : editingSong ? (
+                    "Update Song"
+                  ) : (
+                    "Add Song"
+                  )}
                 </Button>
               </form>
             </DialogContent>
@@ -161,13 +252,16 @@ export default function SongsPage() {
           />
         </div>
         <div className="text-sm text-muted-foreground">
-          {filteredSongs.length} songs found
+          {songs.length} songs found
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredSongs.map((song) => (
-          <Card key={song.id} className="group hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-purple-950/50 dark:via-gray-900 dark:to-pink-950/50 backdrop-blur-sm hover:scale-105">
+        {songs.map((song: any) => (
+          <Card
+            key={song.id}
+            className="group hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-purple-950/50 dark:via-gray-900 dark:to-pink-950/50 backdrop-blur-sm hover:scale-105"
+          >
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-3">
@@ -176,17 +270,30 @@ export default function SongsPage() {
                 <div className="flex gap-1">
                   {isAdmin && (
                     <>
-                      <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleEdit(song)}>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => handleEdit(song)}
+                      >
                         <Edit className="w-4 h-4" />
                       </Button>
-                      <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleDelete(song.id)}>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => handleDelete(song.id)}
+                        disabled={deleteSongMutation.isPending}
+                      >
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </>
                   )}
                 </div>
               </div>
-              <CardTitle className="text-xl font-bold truncate">{song.title}</CardTitle>
+              <CardTitle className="text-xl font-bold truncate">
+                {song.title}
+              </CardTitle>
               <p className="text-muted-foreground font-medium">{song.artist}</p>
             </CardHeader>
             <CardContent className="pt-0">
@@ -196,22 +303,49 @@ export default function SongsPage() {
                 </span>
               </div>
               {song.description && (
-                <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{song.description}</p>
+                <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                  {song.description}
+                </p>
               )}
-              <Button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium">
-                <Play className="w-4 h-4 mr-2" />
-                Play Now
-              </Button>
+              {song.file_url ? (
+                <Button
+                  className="w-full mb-2"
+                  variant="secondary"
+                  onClick={() => {
+                    setPlayerSong({
+                      id: song.id,
+                      title: song.title,
+                      artist: song.artist,
+                      duration: song.duration || "",
+                      file_url: song.file_url,
+                    });
+                    setIsPlayerVisible(true);
+                  }}
+                >
+                  <Play className="w-4 h-4 mr-2" />
+                  Play
+                </Button>
+              ) : (
+                <Button disabled className="w-full" variant="outline">
+                  No Audio File
+                </Button>
+              )}
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {filteredSongs.length === 0 && searchTerm && (
+      {songs.length === 0 && !isLoading && (
         <div className="text-center py-8">
-          <p className="text-muted-foreground">No songs found matching "{searchTerm}"</p>
+          <p className="text-muted-foreground">No songs found</p>
         </div>
       )}
+
+      <FloatingPlayer
+        song={playerSong}
+        isVisible={isPlayerVisible}
+        onClose={() => setIsPlayerVisible(false)}
+      />
     </div>
-  )
+  );
 }

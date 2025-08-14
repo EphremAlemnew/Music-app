@@ -9,6 +9,10 @@ export interface RegisterData {
   username: string;
   email: string;
   password: string;
+  password_confirm: string;
+  user_type: string;
+  first_name: string;
+  last_name: string;
 }
 
 export interface AuthResponse {
@@ -22,7 +26,7 @@ export interface AuthResponse {
 }
 
 export const login = async (data: LoginData): Promise<AuthResponse> => {
-  const response = await axiosInstance.post("/api/auth/login/", data);
+  const response = await axiosInstance.post("auth/login/", data);
   const { access, refresh, user } = response.data;
 
   localStorage.setItem("token", access);
@@ -33,7 +37,7 @@ export const login = async (data: LoginData): Promise<AuthResponse> => {
 };
 
 export const register = async (data: RegisterData): Promise<AuthResponse> => {
-  const response = await axiosInstance.post("/accounts/register/", data);
+  const response = await axiosInstance.post("auth/register/", data);
   const { access, refresh, user } = response.data;
 
   localStorage.setItem("token", access);
@@ -45,7 +49,8 @@ export const register = async (data: RegisterData): Promise<AuthResponse> => {
 
 export const logout = async (): Promise<void> => {
   try {
-    await axiosInstance.post("/accounts/logout/");
+    const refreshToken = localStorage.getItem("refreshToken");
+    await axiosInstance.post("auth/logout/", { refresh: refreshToken });
   } finally {
     localStorage.removeItem("token");
     localStorage.removeItem("refreshToken");
@@ -58,7 +63,7 @@ export const refreshToken = async (): Promise<string> => {
   const refresh = localStorage.getItem("refreshToken");
   if (!refresh) throw new Error("No refresh token");
 
-  const response = await axiosInstance.post("/accounts/token/refresh/", {
+  const response = await axiosInstance.post("/api/token/refresh/", {
     refresh,
   });
   const { access } = response.data;

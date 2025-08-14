@@ -22,10 +22,11 @@ class SongSerializer(serializers.ModelSerializer):
 
 class SongListSerializer(serializers.ModelSerializer):
     uploaded_by_name = serializers.CharField(source='uploaded_by.username', read_only=True)
+    file_url = serializers.ReadOnlyField()
     
     class Meta:
         model = Song
         fields = [
             'id', 'title', 'artist', 'genre', 'duration',
-            'uploaded_by_name', 'created_at'
+            'uploaded_by_name', 'created_at', 'file_url'
         ]

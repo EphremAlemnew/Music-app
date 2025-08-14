@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Music,
   Home,
@@ -36,6 +36,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useLogoutMutation } from "@/_services/query/auth-query/authQuery";
 
 const menuItems = [
   { title: "Home", icon: Home, url: "/dashboard" },
@@ -53,7 +54,9 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-
+  const { mutate: logout } = useLogoutMutation();
+  const router = useRouter();
+  const logoutMutation = useLogoutMutation();
   return (
     <SidebarProvider>
       <Sidebar>
@@ -61,7 +64,7 @@ export default function DashboardLayout({
           <SidebarGroup>
             <div className="flex items-center gap-2 p-4">
               <Music className="w-8 h-8 text-purple-600" />
-              <span className="font-bold text-lg">MusicVerse</span>
+              <span className="font-bold text-lg">Music</span>
             </div>
             <SidebarGroupContent>
               <SidebarMenu>
@@ -98,7 +101,7 @@ export default function DashboardLayout({
                   <Settings className="mr-2 h-4 w-4" />
                   Settings
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => logoutMutation.mutate()}>
                   <LogOut className="mr-2 h-4 w-4" />
                   Logout
                 </DropdownMenuItem>
@@ -112,12 +115,17 @@ export default function DashboardLayout({
         <header className="flex h-16 items-center justify-between gap-2 px-4 border-b">
           <div className="flex items-center gap-2">
             <SidebarTrigger />
-            <h1 className="text-xl font-semibold">{pathname === '/dashboard' ? 'Dashboard' : menuItems.find(item => item.url === pathname)?.title || 'Dashboard'}</h1>
+            <h1 className="text-xl font-semibold">
+              {pathname === "/dashboard"
+                ? "Dashboard"
+                : menuItems.find((item) => item.url === pathname)?.title ||
+                  "Dashboard"}
+            </h1>
           </div>
           <NotificationDropdown />
         </header>
         <main className="flex-1 p-6">{children}</main>
-        <FloatingPlayer />
+              {/* FloatingPlayer is now controlled from the songs page */}
       </SidebarInset>
     </SidebarProvider>
   );
