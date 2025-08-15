@@ -7,6 +7,8 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from .models import Song
 from .serializers import SongSerializer, SongListSerializer
 from .permissions import IsAdminOrReadOnly
+from notifications.models import Notification
+from accounts.models import User
 
 class SongViewSet(viewsets.ModelViewSet):
     queryset = Song.objects.all()
@@ -23,7 +25,20 @@ class SongViewSet(viewsets.ModelViewSet):
         return SongSerializer
     
     def perform_create(self, serializer):
-        serializer.save(uploaded_by=self.request.user)
+        song = serializer.save(uploaded_by=self.request.user)
+        
+        # Create notifications for all users except the uploader
+        users_to_notify = User.objects.exclude(id=self.request.user.id)
+        notifications = [
+            Notification(
+                user=user,
+                title="New Song Added",
+                message=f"'{song.title}' by {song.artist} has been added to the library",
+                notification_type="song_added"
+            )
+            for user in users_to_notify
+        ]
+        Notification.objects.bulk_create(notifications)
     
     @action(detail=True, methods=['get'])
     def download(self, request, pk=None):

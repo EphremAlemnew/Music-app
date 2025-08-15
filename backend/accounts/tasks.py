@@ -53,7 +53,7 @@ Music Management Team
                     </p>
 
                     <div style="text-align: center; margin: 30px 0;">
-                        <a href="https://your-music-app.com" 
+                        <a href="http://localhost:3000/auth/login" 
                            style="background-color: #1db954; color: white; padding: 12px 20px; border-radius: 5px; text-decoration: none; font-size: 16px;">
                            🎧 Start Exploring
                         </a>

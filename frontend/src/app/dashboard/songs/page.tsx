@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Plus,
   Play,
   Edit,
   Trash2,
-  Upload,
+
   Search,
   Music,
   Loader2,
@@ -20,10 +20,7 @@ import {
 import { useLogSongPlayMutation } from "@/_services/query/play-logs-query/playLogsQuery";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { playSong } from "@/store/slices/musicSlice";
-import {
-  FloatingPlayer,
-  FloatingPlayerSong,
-} from "@/components/music-player/floating-player";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,7 +40,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
+
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -63,6 +60,16 @@ interface Song {
   description?: string;
   audioFile?: File;
 }
+
+interface SongData {
+  id: number;
+  title: string;
+  artist: string;
+  genre: string;
+  description?: string;
+  duration?: number;
+  file_url?: string;
+}
 // ...existing code...
 export default function SongsPage() {
   const { user } = useAppSelector((state) => state.user);
@@ -70,11 +77,21 @@ export default function SongsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSong, setEditingSong] = useState<Song | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
 
-  const [songToDelete, setSongToDelete] = useState<any>(null);
+  const [songToDelete, setSongToDelete] = useState<SongData | null>(null);
+
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const { data: songsData, isLoading } = useSongs({
-    search: searchTerm || undefined,
+    search: debouncedSearchTerm || undefined,
     ordering: "-created_at",
   });
   const createSongMutation = useCreateSongMutation();
@@ -130,7 +147,7 @@ export default function SongsPage() {
     }
   };
 
-  const handleEdit = (song: any) => {
+  const handleEdit = (song: SongData) => {
     setEditingSong(song);
     setFormData({
       title: song.title,
@@ -142,7 +159,7 @@ export default function SongsPage() {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (song: any) => {
+  const handleDelete = (song: SongData) => {
     setSongToDelete(song);
   };
 
@@ -283,10 +300,12 @@ export default function SongsPage() {
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
           <Input
+            key="search-input"
             placeholder="Search songs, artists, or genres..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
+            autoComplete="off"
           />
         </div>
         <div className="text-sm text-muted-foreground">
@@ -295,7 +314,7 @@ export default function SongsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {songs.map((song: any) => (
+        {songs.map((song: SongData) => (
           <Card
             key={song.id}
             className="group hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-purple-950/50 dark:via-gray-900 dark:to-pink-950/50 backdrop-blur-sm hover:scale-105"
@@ -357,7 +376,7 @@ export default function SongsPage() {
                       id: song.id,
                       title: song.title,
                       artist: song.artist,
-                      duration: song.duration || "",
+                      duration: song.duration?.toString() || "",
                       file_url: song.file_url,
                     }));
                   }}
@@ -388,7 +407,7 @@ export default function SongsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Song</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{songToDelete?.title}" by {songToDelete?.artist}? 
+              Are you sure you want to delete &quot;{songToDelete?.title}&quot; by {songToDelete?.artist}? 
               This action cannot be undone and will permanently remove the song and its audio file.
             </AlertDialogDescription>
           </AlertDialogHeader>

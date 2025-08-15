@@ -53,11 +53,11 @@ interface Song {
   id: number;
   title: string;
   artist: string;
-  duration?: string;
+  duration?: number;
   file_url?: string;
 }
 
-interface Playlist {
+interface PlaylistData {
   id: number;
   name: string;
   description?: string;
@@ -79,11 +79,13 @@ export default function PlaylistsPage() {
 
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.user);
-  const isAdmin = user?.is_admin || false;
+
   const currentUser = user?.username || "";
   const logPlayMutation = useLogSongPlayMutation();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingPlaylist, setEditingPlaylist] = useState<any>(null);
+  const [editingPlaylist, setEditingPlaylist] = useState<PlaylistData | null>(
+    null
+  );
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -92,9 +94,13 @@ export default function PlaylistsPage() {
 
   const { data: songsData } = useSongs();
   const availableSongs = songsData?.results || [];
-  const [selectedPlaylist, setSelectedPlaylist] = useState<any>(null);
+  const [selectedPlaylist, setSelectedPlaylist] = useState<PlaylistData | null>(
+    null
+  );
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [playlistToDelete, setPlaylistToDelete] = useState<any>(null);
+  const [playlistToDelete, setPlaylistToDelete] = useState<PlaylistData | null>(
+    null
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,7 +118,7 @@ export default function PlaylistsPage() {
 
         // Update songs in playlist
         const currentSongIds =
-          editingPlaylist.songs?.map((s: any) => s.id) || [];
+          editingPlaylist.songs?.map((s: Song) => s.id) || [];
         const songsToAdd = selectedSongs.filter(
           (id) => !currentSongIds.includes(id)
         );
@@ -145,18 +151,18 @@ export default function PlaylistsPage() {
     }
   };
 
-  const handleEdit = (playlist: any) => {
+  const handleEdit = (playlist: PlaylistData) => {
     if (playlist.created_by_name !== currentUser) return;
     setEditingPlaylist(playlist);
     setFormData({
       name: playlist.name,
       description: playlist.description || "",
     });
-    setSelectedSongs(playlist.songs?.map((s: any) => s.id) || []);
+    setSelectedSongs(playlist.songs?.map((s: Song) => s.id) || []);
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (playlist: any) => {
+  const handleDelete = (playlist: PlaylistData) => {
     setPlaylistToDelete(playlist);
   };
 
@@ -175,21 +181,21 @@ export default function PlaylistsPage() {
     );
   };
 
-  const canModify = (playlist: any) => {
+  const canModify = (playlist: PlaylistData) => {
     return playlist.created_by_name === currentUser;
   };
 
-  const handlePlayPlaylist = (playlist: any) => {
+  const handlePlayPlaylist = (playlist: PlaylistData) => {
     if (playlist.songs && playlist.songs.length > 0) {
       // Log the first song play
       logPlayMutation.mutate(playlist.songs[0].id);
 
       // Convert playlist songs to the format expected by Redux
-      const playlistSongs = playlist.songs.map((song: any) => ({
+      const playlistSongs = playlist.songs.map((song: Song) => ({
         id: song.id,
         title: song.title,
         artist: song.artist,
-        duration: song.duration || "",
+        duration: song.duration?.toString() || "",
         file_url: song.file_url,
       }));
 
@@ -197,7 +203,7 @@ export default function PlaylistsPage() {
     }
   };
 
-  const handlePlaySong = (song: any) => {
+  const handlePlaySong = (song: Song) => {
     // Log the song play
     logPlayMutation.mutate(song.id);
 
@@ -206,7 +212,7 @@ export default function PlaylistsPage() {
         id: song.id,
         title: song.title,
         artist: song.artist,
-        duration: song.duration || "",
+        duration: song.duration?.toString() || "",
         file_url: song.file_url,
       })
     );
@@ -275,7 +281,7 @@ export default function PlaylistsPage() {
                   Select Songs
                 </Label>
                 <div className="max-h-72 overflow-y-auto space-y-3">
-                  {availableSongs.map((song) => {
+                  {availableSongs.map((song: Song) => {
                     const isSelected = selectedSongs.includes(song.id);
                     return (
                       <div
@@ -371,20 +377,6 @@ export default function PlaylistsPage() {
           {selectedPlaylist && (
             <div className="space-y-6">
               <div className="flex items-center gap-4">
-                <Badge
-                  className={
-                    selectedPlaylist.isPublic
-                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                      : "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400"
-                  }
-                >
-                  {selectedPlaylist.isPublic ? (
-                    <Users className="w-3 h-3 mr-1" />
-                  ) : (
-                    <Lock className="w-3 h-3 mr-1" />
-                  )}
-                  {selectedPlaylist.isPublic ? "Public" : "Private"}
-                </Badge>
                 <span className="text-muted-foreground">
                   Created by {selectedPlaylist.created_by_name}
                 </span>
@@ -398,7 +390,7 @@ export default function PlaylistsPage() {
                 <div className="space-y-2 max-h-64 overflow-y-auto">
                   {selectedPlaylist.songs &&
                   selectedPlaylist.songs.length > 0 ? (
-                    selectedPlaylist.songs.map((song: any, index: any) => (
+                    selectedPlaylist.songs.map((song: Song, index: number) => (
                       <div
                         key={song.id}
                         className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50"
@@ -584,9 +576,9 @@ export default function PlaylistsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Playlist</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{playlistToDelete?.name}"? This
-              action cannot be undone and will permanently remove the playlist
-              and all its songs.
+              Are you sure you want to delete &quot;{playlistToDelete?.name}
+              &quot;? This action cannot be undone and will permanently remove
+              the playlist and all its songs.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

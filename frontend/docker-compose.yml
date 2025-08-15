@@ -1,0 +1,75 @@
+version: "3.8"
+
+services:
+  frontend:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api
+      - NEXT_PUBLIC_API_MEDIA_URL=http://localhost:8000
+    depends_on:
+      - backend
+
+  backend:
+    build: ../backend
+    image: music-backend:latest # Name the built image so celery can reuse it
+    ports:
+      - "8000:8000"
+    environment:
+      - SECRET_KEY=your-secret-key-here
+      - DEBUG=True
+      - DB_NAME=music_app
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_HOST=db
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379
+      - EMAIL_HOST=smtp.gmail.com
+      - EMAIL_PORT=587
+      - EMAIL_HOST_USER=ephremalemnew@gmail.com
+      - EMAIL_HOST_PASSWORD=irxl slnh wfjp reoq
+      - DEFAULT_FROM_EMAIL=Music App <ephremalemnew@gmail.com>
+    depends_on:
+      - redis
+      - db
+
+  celery:
+    image: music-backend:latest # Reuse backend image
+    command: celery -A music_app worker -l info
+    environment:
+      - SECRET_KEY=your-secret-key-here
+      - DEBUG=True
+      - DB_NAME=music_app
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_HOST=db
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379
+      - EMAIL_HOST=smtp.gmail.com
+      - EMAIL_PORT=587
+      - EMAIL_HOST_USER=ephremalemnew@gmail.com
+      - EMAIL_HOST_PASSWORD=irxl slnh wfjp reoq
+      - DEFAULT_FROM_EMAIL=Music App <ephremalemnew@gmail.com>
+    depends_on:
+      - redis
+      - db
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=music_app
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

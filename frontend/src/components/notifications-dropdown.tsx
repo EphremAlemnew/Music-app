@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuHeader,
+  DropdownMenuLabel,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -29,7 +29,7 @@ export function NotificationsDropdown() {
   }
 
   const handleMarkAllAsRead = () => {
-    markAllReadMutation.mutate()
+    markAllReadMutation.mutate(undefined)
   }
 
   const formatTimeAgo = (timestamp: string) => {

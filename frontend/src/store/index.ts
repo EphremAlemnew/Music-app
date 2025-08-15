@@ -9,30 +9,29 @@ export const store = configureStore({
   },
 })
 
-// Save state to localStorage (client-side only)
+// Save only user data to localStorage (not tokens)
 if (typeof window !== 'undefined') {
   store.subscribe(() => {
     const state = store.getState()
-    localStorage.setItem('userState', JSON.stringify(state.user))
+    if (state.user.user) {
+      localStorage.setItem('userData', JSON.stringify(state.user.user))
+    } else {
+      localStorage.removeItem('userData')
+    }
   })
 }
 
 // Initialize user state from localStorage
 export const initializeUserState = () => {
   if (typeof window !== 'undefined') {
-    const savedUserState = localStorage.getItem('userState')
-    if (savedUserState) {
+    const savedUserData = localStorage.getItem('userData')
+    if (savedUserData) {
       try {
-        const userState = JSON.parse(savedUserState)
-        if (userState.isAuthenticated && userState.token) {
-          store.dispatch({ type: 'user/setAuth', payload: {
-            user: userState.user,
-            token: userState.token,
-            refreshToken: userState.refreshToken
-          }})
-        }
+        const userData = JSON.parse(savedUserData)
+        // Only set user data, don't attempt refresh on initialization
+        store.dispatch({ type: 'user/setUser', payload: userData })
       } catch (error) {
-        localStorage.removeItem('userState')
+        localStorage.removeItem('userData')
       }
     }
   }

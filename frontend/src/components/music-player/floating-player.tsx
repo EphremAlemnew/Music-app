@@ -248,7 +248,7 @@ export function FloatingPlayer({
               onChange={handleVolumeChange}
               className="flex-1 h-2 rounded-lg appearance-none bg-muted/50 cursor-pointer"
               style={{
-                background: `linear-gradient(to right, var(--primary) ${volume * 100}%, var(--muted) ${volume * 100}%)`,
+                background: `linear-gradient(to right, #10b981 ${volume * 100}%, var(--muted) ${volume * 100}%)`,
               }}
             />
             <span className="text-xs font-medium text-muted-foreground w-8 text-center">

@@ -35,60 +35,56 @@ export const login = async (data: LoginData): Promise<AuthResponse> => {
   const response = await axiosInstance.post("auth/login/", data);
   const { access, refresh, user } = response.data;
 
-  store.dispatch(setAuth({
-    user: {
-      ...user,
-      is_admin: user.user_type === 'admin' || user.is_admin
-    },
-    token: access,
-    refreshToken: refresh
-  }));
+  // Store refresh token somewhere persistent
+  localStorage.setItem("refresh_token", refresh);
+
+  store.dispatch(
+    setAuth({
+      user: {
+        ...user,
+        is_admin: user.user_type === "admin" || user.is_admin,
+      },
+      token: access,
+      refreshToken: refresh,
+    })
+  );
 
   return response.data;
 };
 
 export const register = async (data: RegisterData): Promise<AuthResponse> => {
   const response = await axiosInstance.post("auth/register/", data);
-  const { access, refresh, user } = response.data;
-
-  store.dispatch(setAuth({
-    user: {
-      ...user,
-      is_admin: user.user_type === 'admin' || user.is_admin
-    },
-    token: access,
-    refreshToken: refresh
-  }));
 
   return response.data;
 };
 
 export const logout = async (): Promise<void> => {
   try {
-    const state = store.getState();
-    const refreshToken = state.user.refreshToken;
-    if (refreshToken) {
-      await axiosInstance.post("auth/logout/", { refresh: refreshToken });
-    }
+    await axiosInstance.post(
+      "auth/logout/",
+      {},
+      {
+        withCredentials: true,
+      }
+    );
   } finally {
     store.dispatch(clearAuth());
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('userState');
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("userState");
+      localStorage.removeItem("refresh_token");
     }
     window.location.href = "/auth/login";
   }
 };
 
 export const refreshToken = async (): Promise<string> => {
-  const state = store.getState();
-  const refresh = state.user.refreshToken;
-  if (!refresh) throw new Error("No refresh token");
+  const storedRefresh = localStorage.getItem("refresh_token");
+  if (!storedRefresh) throw new Error("No refresh token stored");
 
-  const response = await axiosInstance.post("/api/token/refresh/", {
-    refresh,
+  const response = await axiosInstance.post("auth/refresh/", {
+    refresh: storedRefresh,
   });
   const { access } = response.data;
-
   store.dispatch(setToken(access));
   return access;
 };
