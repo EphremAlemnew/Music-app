@@ -13,6 +13,8 @@ from .serializers import (
     RemoveSongFromPlaylistSerializer
 )
 from .permissions import IsOwnerOrAdminOrReadOnlyPublic
+from notifications.models import Notification
+from accounts.models import User
 
 class PlaylistViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated, IsOwnerOrAdminOrReadOnlyPublic]
@@ -38,7 +40,21 @@ class PlaylistViewSet(viewsets.ModelViewSet):
         return PlaylistSerializer
     
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        playlist = serializer.save(created_by=self.request.user)
+        
+        # Create notifications for all users except the creator
+        if playlist.is_public:
+            users_to_notify = User.objects.exclude(id=self.request.user.id)
+            notifications = [
+                Notification(
+                    user=user,
+                    title="New Playlist Created",
+                    message=f"'{playlist.name}' playlist has been created by {playlist.created_by.username}",
+                    notification_type="playlist_created"
+                )
+                for user in users_to_notify
+            ]
+            Notification.objects.bulk_create(notifications)
     
     @action(detail=True, methods=['post'])
     def add_song(self, request, pk=None):
