@@ -79,7 +79,7 @@ A full-stack music streaming and management application built with Django REST F
 
 ```bash
 git clone <repository-url>
-cd Demo
+cd Music-app
 ```
 
 ### 2. Start Services
