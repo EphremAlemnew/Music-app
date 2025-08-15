@@ -1,43 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Plus,
-  Play,
-  Edit,
-  Trash2,
-  Music2,
-  Users,
-  Lock,
-  Loader2,
-  Check,
-} from "lucide-react";
+import { Play, Edit, Trash2, Music2, Loader2 } from "lucide-react";
 import {
   usePlaylists,
-  useCreatePlaylistMutation,
-  useUpdatePlaylistMutation,
   useDeletePlaylistMutation,
 } from "@/_services/query/playlists-query/playlistsQuery";
-import { useSongs } from "@/_services/query/songs-query/songsQuery";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { playPlaylist, playSong } from "@/store/slices/musicSlice";
 import { useLogSongPlayMutation } from "@/_services/query/play-logs-query/playLogsQuery";
-import {
-  addSongToPlaylist,
-  removeSongFromPlaylist,
-} from "@/_services/actions/playlists-actions/actions";
+import { AddPlaylist } from "@/components/playlist/add-playlist";
+import { EditPlaylist } from "@/components/playlist/edit-playlist";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -71,8 +53,6 @@ export default function PlaylistsPage() {
   const { data: playlistsData, isLoading } = usePlaylists({
     ordering: "-updated_at",
   });
-  const createPlaylistMutation = useCreatePlaylistMutation();
-  const updatePlaylistMutation = useUpdatePlaylistMutation();
   const deletePlaylistMutation = useDeletePlaylistMutation();
 
   const playlists = playlistsData?.results || [];
@@ -82,18 +62,7 @@ export default function PlaylistsPage() {
 
   const currentUser = user?.username || "";
   const logPlayMutation = useLogSongPlayMutation();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingPlaylist, setEditingPlaylist] = useState<PlaylistData | null>(
-    null
-  );
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-  });
-  const [selectedSongs, setSelectedSongs] = useState<number[]>([]);
 
-  const { data: songsData } = useSongs();
-  const availableSongs = songsData?.results || [];
   const [selectedPlaylist, setSelectedPlaylist] = useState<PlaylistData | null>(
     null
   );
@@ -101,66 +70,6 @@ export default function PlaylistsPage() {
   const [playlistToDelete, setPlaylistToDelete] = useState<PlaylistData | null>(
     null
   );
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    try {
-      if (editingPlaylist) {
-        // Update playlist metadata
-        await updatePlaylistMutation.mutateAsync({
-          id: editingPlaylist.id,
-          data: {
-            name: formData.name,
-            description: formData.description,
-          },
-        });
-
-        // Update songs in playlist
-        const currentSongIds =
-          editingPlaylist.songs?.map((s: Song) => s.id) || [];
-        const songsToAdd = selectedSongs.filter(
-          (id) => !currentSongIds.includes(id)
-        );
-        const songsToRemove = currentSongIds.filter(
-          (id: number) => !selectedSongs.includes(id)
-        );
-
-        // Add new songs sequentially
-        for (let i = 0; i < songsToAdd.length; i++) {
-          await addSongToPlaylist(editingPlaylist.id, songsToAdd[i]);
-        }
-
-        // Remove deselected songs sequentially
-        for (let i = 0; i < songsToRemove.length; i++) {
-          await removeSongFromPlaylist(editingPlaylist.id, songsToRemove[i]);
-        }
-      } else {
-        await createPlaylistMutation.mutateAsync({
-          name: formData.name,
-          description: formData.description,
-          song_ids: selectedSongs,
-        });
-      }
-      setFormData({ name: "", description: "" });
-      setSelectedSongs([]);
-      setEditingPlaylist(null);
-      setIsDialogOpen(false);
-    } catch (error) {
-      console.error("Failed to save playlist:", error);
-    }
-  };
-
-  const handleEdit = (playlist: PlaylistData) => {
-    if (playlist.created_by_name !== currentUser) return;
-    setEditingPlaylist(playlist);
-    setFormData({
-      name: playlist.name,
-      description: playlist.description || "",
-    });
-    setSelectedSongs(playlist.songs?.map((s: Song) => s.id) || []);
-    setIsDialogOpen(true);
-  };
 
   const handleDelete = (playlist: PlaylistData) => {
     setPlaylistToDelete(playlist);
@@ -171,14 +80,6 @@ export default function PlaylistsPage() {
       deletePlaylistMutation.mutate(playlistToDelete.id);
       setPlaylistToDelete(null);
     }
-  };
-
-  const toggleSongSelection = (songId: number) => {
-    setSelectedSongs((prev) =>
-      prev.includes(songId)
-        ? prev.filter((id) => id !== songId)
-        : [...prev, songId]
-    );
   };
 
   const canModify = (playlist: PlaylistData) => {
@@ -237,131 +138,7 @@ export default function PlaylistsPage() {
             Discover and manage your music collections
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button
-              onClick={() => setEditingPlaylist(null)}
-              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white border-0 shadow-md"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Create Playlist
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>
-                {editingPlaylist ? "Edit Playlist" : "Create New Playlist"}
-              </DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="name">Playlist Name</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Input
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  placeholder="Optional description"
-                />
-              </div>
-              <div>
-                <Label className="text-base font-semibold mb-3 block">
-                  Select Songs
-                </Label>
-                <div className="max-h-72 overflow-y-auto space-y-3">
-                  {availableSongs.map((song: Song) => {
-                    const isSelected = selectedSongs.includes(song.id);
-                    return (
-                      <div
-                        key={song.id}
-                        onClick={() => toggleSongSelection(song.id)}
-                        className={`group relative p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 hover:shadow-md ${
-                          isSelected
-                            ? "border-purple-500 bg-purple-50 dark:bg-purple-950/30 shadow-sm"
-                            : "border-gray-200 dark:border-gray-700 hover:border-purple-300"
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${
-                              isSelected
-                                ? "bg-gradient-to-br from-purple-500 to-blue-600"
-                                : "bg-gradient-to-br from-gray-400 to-gray-500 group-hover:from-purple-400 group-hover:to-blue-500"
-                            }`}
-                          >
-                            <Music2 className="w-4 h-4 text-white" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">
-                              {song.title}
-                            </p>
-                            <p className="text-xs text-muted-foreground truncate">
-                              {song.artist}
-                            </p>
-                          </div>
-                          <div
-                            className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200 ${
-                              isSelected
-                                ? "bg-purple-500"
-                                : "bg-gray-200 dark:bg-gray-700 group-hover:bg-purple-200 dark:group-hover:bg-purple-800"
-                            }`}
-                          >
-                            {isSelected ? (
-                              <Check className="w-4 h-4 text-white" />
-                            ) : (
-                              <div className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500 group-hover:bg-purple-400 transition-colors" />
-                            )}
-                          </div>
-                        </div>
-                        {isSelected && (
-                          <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-purple-500/10 to-blue-500/10 pointer-events-none" />
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="mt-3 p-2 bg-muted/50 rounded-lg">
-                  <p className="text-sm font-medium text-center">
-                    {selectedSongs.length} of {availableSongs.length} songs
-                    selected
-                  </p>
-                </div>
-              </div>
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={
-                  createPlaylistMutation.isPending ||
-                  updatePlaylistMutation.isPending
-                }
-              >
-                {createPlaylistMutation.isPending ||
-                updatePlaylistMutation.isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    {editingPlaylist ? "Updating..." : "Creating..."}
-                  </>
-                ) : editingPlaylist ? (
-                  "Update Playlist"
-                ) : (
-                  "Create Playlist"
-                )}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <AddPlaylist />
       </div>
 
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
@@ -431,16 +208,18 @@ export default function PlaylistsPage() {
                 </Button>
                 {canModify(selectedPlaylist) && (
                   <>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        handleEdit(selectedPlaylist);
-                        setIsDetailsOpen(false);
-                      }}
-                    >
-                      <Edit className="w-4 h-4 mr-2" />
-                      Edit
-                    </Button>
+                    <EditPlaylist
+                      playlist={selectedPlaylist}
+                      trigger={
+                        <Button
+                          variant="outline"
+                          onClick={() => setIsDetailsOpen(false)}
+                        >
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit
+                        </Button>
+                      }
+                    />
                     <Button
                       variant="outline"
                       onClick={() => {
@@ -538,17 +317,19 @@ export default function PlaylistsPage() {
                 </Button>
                 {canModify(playlist) && (
                   <div className="flex gap-1">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEdit(playlist);
-                      }}
-                      className="hover:bg-blue-50 dark:hover:bg-blue-950"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
+                    <EditPlaylist
+                      playlist={playlist}
+                      trigger={
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => e.stopPropagation()}
+                          className="hover:bg-blue-50 dark:hover:bg-blue-950"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                      }
+                    />
                     <Button
                       size="sm"
                       variant="outline"

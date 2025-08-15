@@ -1,36 +1,20 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  Plus,
-  Play,
-  Edit,
-  Trash2,
-
-  Search,
-  Music,
-  Loader2,
-} from "lucide-react";
+import { Play, Trash2, Search, Music, Loader2 } from "lucide-react";
 import {
   useSongs,
-  useCreateSongMutation,
-  useUpdateSongMutation,
   useDeleteSongMutation,
 } from "@/_services/query/songs-query/songsQuery";
 import { useLogSongPlayMutation } from "@/_services/query/play-logs-query/playLogsQuery";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { playSong } from "@/store/slices/musicSlice";
+import { EditSong } from "@/components/songs/edit-song";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,26 +24,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-
 } from "@/components/ui/alert-dialog";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
-interface Song {
-  id: number;
-  title: string;
-  artist: string;
-  genre: string;
-  description?: string;
-  audioFile?: File;
-}
+import AddSong from "@/components/songs/add-song";
 
 interface SongData {
   id: number;
@@ -74,8 +41,6 @@ interface SongData {
 export default function SongsPage() {
   const { user } = useAppSelector((state) => state.user);
   const isAdmin = user?.is_admin || false;
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingSong, setEditingSong] = useState<Song | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
 
@@ -94,70 +59,11 @@ export default function SongsPage() {
     search: debouncedSearchTerm || undefined,
     ordering: "-created_at",
   });
-  const createSongMutation = useCreateSongMutation();
-  const updateSongMutation = useUpdateSongMutation();
   const deleteSongMutation = useDeleteSongMutation();
   const logPlayMutation = useLogSongPlayMutation();
   const dispatch = useAppDispatch();
 
   const songs = songsData?.results || [];
-  const [formData, setFormData] = useState({
-    title: "",
-    artist: "",
-    genre: "",
-    description: "",
-    audioFile: null as File | null,
-  });
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingSong && !formData.audioFile) return;
-
-    try {
-      if (editingSong) {
-        await updateSongMutation.mutateAsync({
-          id: Number(editingSong.id),
-          data: {
-            title: formData.title,
-            artist: formData.artist,
-            genre: formData.genre,
-            description: formData.description,
-          }
-        });
-      } else if (formData.audioFile) {
-        await createSongMutation.mutateAsync({
-          title: formData.title,
-          artist: formData.artist,
-          genre: formData.genre,
-          description: formData.description,
-          audio_file: formData.audioFile,
-        });
-      }
-      setFormData({
-        title: "",
-        artist: "",
-        genre: "",
-        description: "",
-        audioFile: null,
-      });
-      setEditingSong(null);
-      setIsDialogOpen(false);
-    } catch (error) {
-      console.error("Failed to save song:", error);
-    }
-  };
-
-  const handleEdit = (song: SongData) => {
-    setEditingSong(song);
-    setFormData({
-      title: song.title,
-      artist: song.artist,
-      genre: song.genre,
-      description: song.description || "",
-      audioFile: null,
-    });
-    setIsDialogOpen(true);
-  };
 
   const handleDelete = (song: SongData) => {
     setSongToDelete(song);
@@ -182,118 +88,7 @@ export default function SongsPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Songs</h1>
-        {isAdmin && (
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={() => setEditingSong(null)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Song
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingSong ? "Edit Song" : "Add New Song"}
-                </DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <Label htmlFor="title">Title</Label>
-                  <Input
-                    id="title"
-                    value={formData.title}
-                    onChange={(e) =>
-                      setFormData({ ...formData, title: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="artist">Artist</Label>
-                  <Input
-                    id="artist"
-                    value={formData.artist}
-                    onChange={(e) =>
-                      setFormData({ ...formData, artist: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="genre">Genre</Label>
-                  <Select
-                    value={formData.genre}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, genre: value })
-                    }
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a genre" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="rock">Rock</SelectItem>
-                      <SelectItem value="pop">Pop</SelectItem>
-                      <SelectItem value="jazz">Jazz</SelectItem>
-                      <SelectItem value="classical">Classical</SelectItem>
-                      <SelectItem value="electronic">Electronic</SelectItem>
-                      <SelectItem value="hip_hop">Hip Hop</SelectItem>
-                      <SelectItem value="country">Country</SelectItem>
-                      <SelectItem value="blues">Blues</SelectItem>
-                      <SelectItem value="reggae">Reggae</SelectItem>
-                      <SelectItem value="folk">Folk</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) =>
-                      setFormData({ ...formData, description: e.target.value })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="audio">Audio File</Label>
-                  <Input
-                    id="audio"
-                    type="file"
-                    accept=".mp3,.wav,.m4a,.ogg"
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        audioFile: e.target.files?.[0] || null,
-                      })
-                    }
-                    required={!editingSong}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Supported formats: MP3, WAV, M4A, OGG
-                  </p>
-                </div>
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={createSongMutation.isPending || updateSongMutation.isPending}
-                >
-                  {(createSongMutation.isPending || updateSongMutation.isPending) ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Uploading...
-                    </>
-                  ) : editingSong ? (
-                    "Update Song"
-                  ) : (
-                    "Add Song"
-                  )}
-                </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
-        )}
+        {isAdmin && <AddSong />}
       </div>
 
       <div className="flex gap-4 items-center">
@@ -327,14 +122,7 @@ export default function SongsPage() {
                 <div className="flex gap-1">
                   {isAdmin && (
                     <>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => handleEdit(song)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
+                      <EditSong song={song} />
                       <Button
                         size="sm"
                         variant="ghost"
@@ -371,14 +159,16 @@ export default function SongsPage() {
                   onClick={() => {
                     // Log the play
                     logPlayMutation.mutate(song.id);
-                    
-                    dispatch(playSong({
-                      id: song.id,
-                      title: song.title,
-                      artist: song.artist,
-                      duration: song.duration?.toString() || "",
-                      file_url: song.file_url,
-                    }));
+
+                    dispatch(
+                      playSong({
+                        id: song.id,
+                        title: song.title,
+                        artist: song.artist,
+                        duration: song.duration?.toString() || "",
+                        file_url: song.file_url,
+                      })
+                    );
                   }}
                 >
                   <Play className="w-4 h-4 mr-2" />
@@ -400,20 +190,25 @@ export default function SongsPage() {
         </div>
       )}
 
-
-
-      <AlertDialog open={!!songToDelete} onOpenChange={() => setSongToDelete(null)}>
+      <AlertDialog
+        open={!!songToDelete}
+        onOpenChange={() => setSongToDelete(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Song</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{songToDelete?.title}&quot; by {songToDelete?.artist}? 
-              This action cannot be undone and will permanently remove the song and its audio file.
+              Are you sure you want to delete &quot;{songToDelete?.title}&quot;
+              by {songToDelete?.artist}? This action cannot be undone and will
+              permanently remove the song and its audio file.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
