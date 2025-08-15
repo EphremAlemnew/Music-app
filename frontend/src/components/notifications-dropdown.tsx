@@ -74,47 +74,49 @@ export function NotificationsDropdown() {
           )}
         </div>
         <DropdownMenuSeparator />
-        {recentNotifications.length === 0 ? (
-          <div className="p-4 text-center text-muted-foreground">
-            No notifications
-          </div>
-        ) : (
-          recentNotifications.map((notification) => (
-            <DropdownMenuItem
-              key={notification.id}
-              className={`p-3 cursor-pointer ${
-                !notification.is_read ? 'bg-blue-50 dark:bg-blue-950/30' : ''
-              }`}
-              onClick={() => !notification.is_read && handleMarkAsRead(notification.id)}
-            >
-              <div className="flex items-start gap-3 w-full">
-                <div className={`w-2 h-2 rounded-full mt-2 ${
-                  !notification.is_read ? 'bg-blue-500' : 'bg-transparent'
-                }`} />
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm truncate">{notification.title}</p>
-                  <p className="text-xs text-muted-foreground line-clamp-2">{notification.message}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {formatTimeAgo(notification.created_at)}
-                  </p>
+        <div className="max-h-80 overflow-y-auto">
+          {recentNotifications.length === 0 ? (
+            <div className="p-4 text-center text-muted-foreground">
+              No notifications
+            </div>
+          ) : (
+            recentNotifications.map((notification) => (
+              <DropdownMenuItem
+                key={notification.id}
+                className={`p-3 cursor-pointer ${
+                  !notification.is_read ? 'bg-blue-50 dark:bg-blue-950/30' : ''
+                }`}
+                onClick={() => !notification.is_read && handleMarkAsRead(notification.id)}
+              >
+                <div className="flex items-start gap-3 w-full">
+                  <div className={`w-2 h-2 rounded-full mt-2 ${
+                    !notification.is_read ? 'bg-blue-500' : 'bg-transparent'
+                  }`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">{notification.title}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-2">{notification.message}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {formatTimeAgo(notification.created_at)}
+                    </p>
+                  </div>
+                  {!notification.is_read && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="p-1 h-auto"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleMarkAsRead(notification.id)
+                      }}
+                    >
+                      <Check className="w-3 h-3" />
+                    </Button>
+                  )}
                 </div>
-                {!notification.is_read && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="p-1 h-auto"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleMarkAsRead(notification.id)
-                    }}
-                  >
-                    <Check className="w-3 h-3" />
-                  </Button>
-                )}
-              </div>
-            </DropdownMenuItem>
-          ))
-        )}
+              </DropdownMenuItem>
+            ))
+          )}
+        </div>
         {notifications.length > 5 && (
           <>
             <DropdownMenuSeparator />
